@@ -30,7 +30,7 @@ async function getAppliedVersions(): Promise<Set<string>> {
   const result = await client.query<{ version: string }>(
     "SELECT version FROM schema_migrations",
   );
-  return new Set(result.rows.map((row) => row.version));
+  return new Set(result.rows.map((row: { version: string }) => row.version));
 }
 
 async function run() {
