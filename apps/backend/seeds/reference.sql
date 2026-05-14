@@ -70,7 +70,7 @@ VALUES
 -- Move conflicting legacy rows aside so deterministic seed ids can be inserted
 -- without deleting referenced data; clearing ISIN releases the partial unique index.
 UPDATE securities AS existing
-SET ticker = existing.ticker || '__legacy__'
+SET ticker = existing.ticker || '-legacy-'
       || substring(replace(existing.id::text, '-', '') from 1 for 8),
     isin = NULL
 FROM desired_securities AS desired
