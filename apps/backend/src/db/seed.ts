@@ -489,7 +489,9 @@ async function run() {
     database: env.POSTGRES_DB,
     user: env.POSTGRES_USER,
     password: env.POSTGRES_PASSWORD,
-    ssl: env.POSTGRES_SSL ? { rejectUnauthorized: false } : false,
+    ssl: env.POSTGRES_SSL
+      ? { rejectUnauthorized: process.env.POSTGRES_SSL_SKIP_VERIFY !== "true" }
+      : false,
   });
 
   await client.connect();
