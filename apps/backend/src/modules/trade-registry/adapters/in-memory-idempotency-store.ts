@@ -25,4 +25,9 @@ export class InMemoryIdempotencyStore implements IdempotencyStorePort {
       tradeId,
     });
   }
+
+  async release(scope: string, key: string): Promise<void> {
+    const composite = `${scope}:${key}`;
+    this.keys.delete(composite);
+  }
 }

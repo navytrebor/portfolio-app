@@ -28,4 +28,14 @@ export class PostgresIdempotencyStore implements IdempotencyStorePort {
       [scope, key, tradeId],
     );
   }
+
+  async release(scope: string, key: string): Promise<void> {
+    await this.pool.query(
+      `
+      DELETE FROM trade_idempotency_keys
+      WHERE scope = $1 AND idempotency_key = $2
+      `,
+      [scope, key],
+    );
+  }
 }
