@@ -39,9 +39,20 @@ ALTER TABLE trades
   ADD COLUMN IF NOT EXISTS reversal_of_trade_id UUID REFERENCES trades(id),
   ADD COLUMN IF NOT EXISTS ingestion_source TEXT;
 
-ALTER TABLE trades
-  ADD CONSTRAINT chk_trades_event_type
-  CHECK (event_type IN ('EXECUTION', 'REVERSAL', 'CORPORATE_ACTION'));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'chk_trades_event_type'
+      AND conrelid = 'trades'::regclass
+  ) THEN
+    ALTER TABLE trades
+      ADD CONSTRAINT chk_trades_event_type
+      CHECK (event_type IN ('EXECUTION', 'REVERSAL', 'CORPORATE_ACTION'));
+  END IF;
+END;
+$$;
 
 CREATE INDEX IF NOT EXISTS idx_trades_reversal_of_trade
   ON trades (reversal_of_trade_id)
