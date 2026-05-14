@@ -21,6 +21,7 @@ const envSchema = z.object({
     .string()
     .transform((v) => v === "true" || v === "1")
     .default("false"),
+  IDEMPOTENCY_TTL_HOURS: z.coerce.number().int().positive().default(24),
   REDIS_HOST: z.string().min(1),
   REDIS_PORT: z.coerce.number().int().positive().default(6379),
 });

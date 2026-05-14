@@ -1,13 +1,28 @@
 import type { IdempotencyStorePort } from "../application/ports/idempotency-store-port";
 
 export class InMemoryIdempotencyStore implements IdempotencyStorePort {
-  private readonly keys = new Set<string>();
+  private readonly keys = new Map<string, { expiresAt: string; tradeId?: string }>();
 
-  async exists(scope: string, key: string): Promise<boolean> {
-    return this.keys.has(`${scope}:${key}`);
+  async reserve(scope: string, key: string, expiresAt: string): Promise<boolean> {
+    const composite = `${scope}:${key}`;
+    if (this.keys.has(composite)) {
+      return false;
+    }
+
+    this.keys.set(composite, { expiresAt });
+    return true;
   }
 
-  async mark(scope: string, key: string): Promise<void> {
-    this.keys.add(`${scope}:${key}`);
+  async markCompleted(scope: string, key: string, tradeId: string): Promise<void> {
+    const composite = `${scope}:${key}`;
+    const entry = this.keys.get(composite);
+    if (!entry) {
+      return;
+    }
+
+    this.keys.set(composite, {
+      ...entry,
+      tradeId,
+    });
   }
 }

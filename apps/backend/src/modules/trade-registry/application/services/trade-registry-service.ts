@@ -9,6 +9,7 @@ export class TradeRegistryService {
   constructor(
     private readonly trades: TradeRepositoryPort,
     private readonly idempotency: IdempotencyStorePort,
+    private readonly idempotencyTtlHours: number,
   ) {}
 
   async listTrades(): Promise<TradeRecord[]> {
@@ -17,9 +18,17 @@ export class TradeRegistryService {
 
   async registerTrade(input: RegisterTradeInput): Promise<TradeRecord> {
     const scope = "trade-registry.register";
-    const alreadyProcessed = await this.idempotency.exists(scope, input.idempotencyKey);
+    const expiresAt = new Date(
+      Date.now() + this.idempotencyTtlHours * 60 * 60 * 1000,
+    ).toISOString();
 
-    if (alreadyProcessed) {
+    const reserved = await this.idempotency.reserve(
+      scope,
+      input.idempotencyKey,
+      expiresAt,
+    );
+
+    if (!reserved) {
       throw new Error("Duplicate idempotency key");
     }
 
@@ -36,7 +45,7 @@ export class TradeRegistryService {
     };
 
     const created = await this.trades.create(trade);
-    await this.idempotency.mark(scope, input.idempotencyKey);
+    await this.idempotency.markCompleted(scope, input.idempotencyKey, created.id);
 
     return created;
   }

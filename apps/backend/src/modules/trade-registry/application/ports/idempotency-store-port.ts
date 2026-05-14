@@ -1,4 +1,4 @@
 export interface IdempotencyStorePort {
-  exists(scope: string, key: string): Promise<boolean>;
-  mark(scope: string, key: string): Promise<void>;
+  reserve(scope: string, key: string, expiresAt: string): Promise<boolean>;
+  markCompleted(scope: string, key: string, tradeId: string): Promise<void>;
 }

@@ -6,8 +6,8 @@ import { InMemorySecurityRepository } from "../modules/security-master/adapters/
 import { SecurityMasterService } from "../modules/security-master/services/security-master-service";
 import { InMemoryPricingFxRepository } from "../modules/pricing-fx/adapters/in-memory-pricing-fx-repository";
 import { PricingFxService } from "../modules/pricing-fx/services/pricing-fx-service";
-import { InMemoryIdempotencyStore } from "../modules/trade-registry/adapters/in-memory-idempotency-store";
-import { InMemoryTradeRepository } from "../modules/trade-registry/adapters/in-memory-trade-repository";
+import { PostgresIdempotencyStore } from "../modules/trade-registry/adapters/postgres-idempotency-store";
+import { PostgresTradeRepository } from "../modules/trade-registry/adapters/postgres-trade-repository";
 import { TradeRegistryService } from "../modules/trade-registry/application/services/trade-registry-service";
 import {
   InMemoryPositionSource,
@@ -20,6 +20,8 @@ import {
   InMemoryValuationHistory,
 } from "../modules/performance/adapters/in-memory-performance-adapters";
 import { PerformanceService } from "../modules/performance/application/services/performance-service";
+import { postgresPool } from "../db/postgres-pool";
+import { env } from "../config/env";
 
 export type AppContainer = {
   identityService: IdentityService;
@@ -41,8 +43,9 @@ export function buildContainer(): AppContainer {
   const pricingFxService = new PricingFxService(new InMemoryPricingFxRepository());
 
   const tradeRegistryService = new TradeRegistryService(
-    new InMemoryTradeRepository(),
-    new InMemoryIdempotencyStore(),
+    new PostgresTradeRepository(postgresPool),
+    new PostgresIdempotencyStore(postgresPool),
+    env.IDEMPOTENCY_TTL_HOURS,
   );
 
   const valuationService = new ValuationService(
