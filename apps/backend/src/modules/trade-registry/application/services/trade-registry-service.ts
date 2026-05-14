@@ -50,7 +50,9 @@ export class TradeRegistryService {
 
       return created;
     } catch (error) {
-      await this.idempotency.release(scope, input.idempotencyKey);
+      try {
+        await this.idempotency.release(scope, input.idempotencyKey);
+      } catch {}
       throw error;
     }
   }
