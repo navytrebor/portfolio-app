@@ -16,8 +16,9 @@ export class PerformanceService {
     const metrics: PerformanceMetrics = {
       portfolioId,
       asOf,
-      twr: snapshots.length > 1 ? 0 : 0,
-      mwr: snapshots.length > 1 ? 0 : 0,
+      // TODO: Replace placeholder values with actual TWR/MWR calculations.
+      twr: 0,
+      mwr: 0,
       drawdown: 0,
     };
 
