@@ -53,8 +53,11 @@ export class TradeRegistryService {
       try {
         await this.idempotency.release(scope, input.idempotencyKey);
       } catch (releaseError) {
-        if (error instanceof Error) {
-          (error as Error & { cause?: unknown }).cause ??= releaseError;
+        if (error instanceof Error && error.cause === undefined) {
+          Object.defineProperty(error, "cause", {
+            value: releaseError,
+            configurable: true,
+          });
         }
       }
       throw error;
