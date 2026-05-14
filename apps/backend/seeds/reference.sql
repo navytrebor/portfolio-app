@@ -67,6 +67,8 @@ VALUES
   ('88888888-8888-8888-8888-888888888888', 'SPY', 'US78462F1030', 'ETF', 'USD'),
   ('99999999-9999-9999-9999-999999999999', 'VGK', 'US9220427754', 'ETF', 'EUR');
 
+-- Move conflicting legacy rows aside so deterministic seed ids can be inserted
+-- without deleting referenced data; clearing ISIN releases the partial unique index.
 UPDATE securities AS existing
 SET ticker = existing.ticker || '__legacy__'
       || substring(replace(existing.id::text, '-', '') from 1 for 8),
