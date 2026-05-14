@@ -10,7 +10,7 @@ VALUES
   ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'carol@example.com');
 
 UPDATE users AS existing
-SET email = 'seed-legacy+' || existing.id::text || '@seed.invalid'
+SET email = 'seed-legacy-' || existing.id::text || '@example.invalid'
 FROM desired_users AS desired
 WHERE existing.email = desired.email
   AND existing.id <> desired.id;
@@ -68,11 +68,9 @@ VALUES
   ('99999999-9999-9999-9999-999999999999', 'VGK', 'US9220427754', 'ETF', 'EUR');
 
 UPDATE securities AS existing
-SET ticker = existing.ticker || '__legacy__' || replace(existing.id::text, '-', ''),
-    isin = CASE
-      WHEN existing.isin IS NULL THEN NULL
-      ELSE existing.isin || '__legacy__' || replace(existing.id::text, '-', '')
-    END
+SET ticker = existing.ticker || '__legacy__'
+      || substring(replace(existing.id::text, '-', '') from 1 for 8),
+    isin = NULL
 FROM desired_securities AS desired
 WHERE existing.id <> desired.id
   AND (
