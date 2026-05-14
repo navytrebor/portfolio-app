@@ -52,7 +52,9 @@ export class TradeRegistryService {
     } catch (error) {
       try {
         await this.idempotency.release(scope, input.idempotencyKey);
-      } catch {}
+      } catch (releaseError) {
+        console.error("Failed to release idempotency key reservation", releaseError);
+      }
       throw error;
     }
   }
