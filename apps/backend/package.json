@@ -8,6 +8,9 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed": "tsx src/db/seed.ts --mode=upsert --scale=medium --seed=phase2-default-001",
+    "db:seed:reset": "tsx src/db/seed.ts --mode=reset --scale=medium --seed=phase2-default-001",
+    "db:seed:smoke": "tsx src/db/seed.ts --mode=upsert --scale=smoke --seed=phase2-default-001",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
