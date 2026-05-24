@@ -21,6 +21,7 @@ export interface PricingFxRepository {
   getSecurityPriceFreshnessStatus(
     asOfDate: string,
     maxAgeHours: number,
+    requiredSecurityIds: string[],
   ): Promise<FreshnessStatus>;
   getFxRateFreshnessStatus(
     asOfDate: string,

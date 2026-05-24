@@ -98,8 +98,9 @@ export class InMemoryPricingFxRepository implements PricingFxRepository {
   async getSecurityPriceFreshnessStatus(
     asOfDate: string,
     maxAgeHours: number,
+    requiredSecurityIds: string[],
   ): Promise<FreshnessStatus> {
-    const thresholdDate = this.computeThresholdDate(asOfDate, maxAgeHours);
+    const thresholdTimestamp = this.computeThresholdTimestamp(asOfDate, maxAgeHours);
     const latestBySecurity = new Map<string, string>();
 
     for (const price of this.prices.values()) {
@@ -109,11 +110,18 @@ export class InMemoryPricingFxRepository implements PricingFxRepository {
       }
     }
 
-    const staleCount = Array.from(latestBySecurity.values()).filter(
-      (date) => date < thresholdDate,
-    ).length;
+    let staleCount = 0;
+    for (const securityId of requiredSecurityIds) {
+      const latestAsOfDate = latestBySecurity.get(securityId);
+      if (
+        !latestAsOfDate ||
+        this.toEndOfDayTimestamp(latestAsOfDate).getTime() < thresholdTimestamp.getTime()
+      ) {
+        staleCount += 1;
+      }
+    }
 
-    return { staleCount, thresholdDate };
+    return { staleCount, thresholdDate: thresholdTimestamp.toISOString() };
   }
 
   async getFxRateFreshnessStatus(
@@ -121,7 +129,7 @@ export class InMemoryPricingFxRepository implements PricingFxRepository {
     maxAgeHours: number,
     requiredPairs: Array<{ fromCurrency: string; toCurrency: string }>,
   ): Promise<FreshnessStatus> {
-    const thresholdDate = this.computeThresholdDate(asOfDate, maxAgeHours);
+    const thresholdTimestamp = this.computeThresholdTimestamp(asOfDate, maxAgeHours);
     let staleCount = 0;
 
     for (const pair of requiredPairs) {
@@ -133,17 +141,23 @@ export class InMemoryPricingFxRepository implements PricingFxRepository {
         )
         .sort((a, b) => b.asOf.localeCompare(a.asOf))[0]?.asOf;
 
-      if (!latest || latest < thresholdDate) {
+      if (
+        !latest ||
+        this.toEndOfDayTimestamp(latest).getTime() < thresholdTimestamp.getTime()
+      ) {
         staleCount += 1;
       }
     }
 
-    return { staleCount, thresholdDate };
+    return { staleCount, thresholdDate: thresholdTimestamp.toISOString() };
   }
 
-  private computeThresholdDate(asOfDate: string, maxAgeHours: number): string {
-    const asOf = new Date(`${asOfDate}T00:00:00.000Z`);
-    const threshold = new Date(asOf.getTime() - maxAgeHours * 60 * 60 * 1000);
-    return threshold.toISOString().slice(0, 10);
+  private computeThresholdTimestamp(asOfDate: string, maxAgeHours: number): Date {
+    const asOf = this.toEndOfDayTimestamp(asOfDate);
+    return new Date(asOf.getTime() - maxAgeHours * 60 * 60 * 1000);
+  }
+
+  private toEndOfDayTimestamp(value: string): Date {
+    return new Date(`${value}T23:59:59.999Z`);
   }
 }

@@ -59,6 +59,7 @@ export class PricingFxIngestionService {
     const securityFreshness = await this.repository.getSecurityPriceFreshnessStatus(
       input.asOfDate,
       input.securityPriceSlaHours,
+      input.securityIds,
     );
     const fxFreshness = await this.repository.getFxRateFreshnessStatus(
       input.asOfDate,
