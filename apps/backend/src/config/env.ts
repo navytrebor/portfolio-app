@@ -24,6 +24,9 @@ const envSchema = z.object({
   IDEMPOTENCY_TTL_HOURS: z.coerce.number().int().positive().default(24),
   REDIS_HOST: z.string().min(1),
   REDIS_PORT: z.coerce.number().int().positive().default(6379),
+  PRICING_FX_JOB_SOURCE: z.string().min(1).default("ingestion-job"),
+  PRICING_PRICE_SLA_HOURS: z.coerce.number().int().positive().default(36),
+  PRICING_FX_SLA_HOURS: z.coerce.number().int().positive().default(36),
 });
 
 export const env = envSchema.parse(process.env);

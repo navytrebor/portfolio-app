@@ -11,6 +11,7 @@
     "db:seed": "tsx src/db/seed.ts --mode=upsert --scale=medium --seed=phase2-default-001",
     "db:seed:reset": "tsx src/db/seed.ts --mode=reset --scale=medium --seed=phase2-default-001",
     "db:seed:smoke": "tsx src/db/seed.ts --mode=upsert --scale=smoke --seed=phase2-default-001",
+    "pricing-fx:smoke": "tsx src/modules/pricing-fx/services/pricing-fx-ingestion-smoke.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
