@@ -28,7 +28,8 @@ export class PostgresIdempotencyStore implements IdempotencyStorePort {
         expires_at
       )
       VALUES ($1, $2, $3::uuid, $4, 'IN_PROGRESS', $5::timestamptz)
-      ON CONFLICT (scope, idempotency_key) DO NOTHING
+      ON CONFLICT (scope, idempotency_key) DO UPDATE
+      SET request_hash = COALESCE(trade_idempotency_keys.request_hash, EXCLUDED.request_hash)
       `,
       [scope, key, proposedTradeId, requestHash, expiresAt],
     );
@@ -63,8 +64,8 @@ export class PostgresIdempotencyStore implements IdempotencyStorePort {
       UPDATE trade_idempotency_keys
       SET trade_id = $3,
           processing_status = 'COMPLETED',
-          completed_at = NOW()
-      WHERE scope = $1 AND idempotency_key = $2
+          completed_at = COALESCE(completed_at, NOW())
+      WHERE scope = $1 AND idempotency_key = $2 AND processing_status <> 'COMPLETED'
       `,
       [scope, key, tradeId],
     );
