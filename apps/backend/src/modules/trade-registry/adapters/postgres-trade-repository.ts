@@ -46,6 +46,7 @@ export class PostgresTradeRepository implements TradeRepositoryPort {
         created_at
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz, $8, $9::timestamptz)
+      ON CONFLICT (id) DO NOTHING
       RETURNING id, portfolio_id, security_id, side, quantity, price, trade_date, currency, created_at
       `,
       [
@@ -60,6 +61,32 @@ export class PostgresTradeRepository implements TradeRepositoryPort {
         trade.createdAt,
       ],
     );
+
+    if ((result.rowCount ?? 0) === 0) {
+      const existing = await this.findById(trade.id);
+      if (!existing) {
+        throw new Error("Trade insert conflict without existing row");
+      }
+
+      return existing;
+    }
+
+    return rowToTrade(result.rows[0]);
+  }
+
+  async findById(id: string): Promise<TradeRecord | null> {
+    const result = await this.pool.query<TradeRow>(
+      `
+      SELECT id, portfolio_id, security_id, side, quantity, price, trade_date, currency, created_at
+      FROM trades
+      WHERE id = $1
+      `,
+      [id],
+    );
+
+    if ((result.rowCount ?? 0) === 0) {
+      return null;
+    }
 
     return rowToTrade(result.rows[0]);
   }

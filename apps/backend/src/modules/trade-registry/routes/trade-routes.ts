@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { createTradeRequestSchema } from "@portfolio/contracts";
 import type { TradeRegistryService } from "../application/services/trade-registry-service";
+import { IdempotencyPayloadMismatchError } from "../application/services/trade-registry-service";
 
 export async function registerTradeRoutes(
   app: FastifyInstance,
@@ -34,6 +35,12 @@ export async function registerTradeRoutes(
       });
       return reply.status(201).send(trade);
     } catch (error) {
+      if (error instanceof IdempotencyPayloadMismatchError) {
+        return reply.status(409).send({
+          message: "Idempotency key already used with different payload",
+        });
+      }
+
       if (error instanceof Error && error.message === "Duplicate idempotency key") {
         return reply.status(409).send({
           message: "Duplicate idempotency key",

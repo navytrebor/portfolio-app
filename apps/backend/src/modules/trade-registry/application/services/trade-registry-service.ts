@@ -1,9 +1,31 @@
+import { createHash } from "node:crypto";
 import type {
   RegisterTradeInput,
   TradeRecord,
 } from "../../domain/trade-record";
 import type { IdempotencyStorePort } from "../ports/idempotency-store-port";
 import type { TradeRepositoryPort } from "../ports/trade-repository-port";
+
+export class IdempotencyPayloadMismatchError extends Error {
+  constructor() {
+    super("Idempotency key already used with a different payload");
+    this.name = "IdempotencyPayloadMismatchError";
+  }
+}
+
+function hashTradeRequest(input: RegisterTradeInput): string {
+  const canonicalPayload = JSON.stringify({
+    portfolioId: input.portfolioId,
+    securityId: input.securityId,
+    side: input.side,
+    quantity: input.quantity,
+    price: input.price,
+    tradeDate: input.tradeDate,
+    currency: input.currency,
+  });
+
+  return createHash("sha256").update(canonicalPayload).digest("hex");
+}
 
 export class TradeRegistryService {
   constructor(
@@ -21,46 +43,42 @@ export class TradeRegistryService {
     const expiresAt = new Date(
       Date.now() + this.idempotencyTtlHours * 60 * 60 * 1000,
     ).toISOString();
+    const requestHash = hashTradeRequest(input);
+    const proposedTradeId = crypto.randomUUID();
 
-    const reserved = await this.idempotency.reserve(
+    const reservation = await this.idempotency.reserveOrGet(
       scope,
       input.idempotencyKey,
+      requestHash,
+      proposedTradeId,
       expiresAt,
     );
 
-    if (!reserved) {
-      throw new Error("Duplicate idempotency key");
+    if (
+      reservation.requestHash !== null &&
+      reservation.requestHash !== requestHash
+    ) {
+      throw new IdempotencyPayloadMismatchError();
     }
 
-    try {
-      const trade: TradeRecord = {
-        id: crypto.randomUUID(),
-        portfolioId: input.portfolioId,
-        securityId: input.securityId,
-        side: input.side,
-        quantity: input.quantity,
-        price: input.price,
-        tradeDate: input.tradeDate,
-        currency: input.currency,
-        createdAt: new Date().toISOString(),
-      };
+    const trade: TradeRecord = {
+      id: reservation.tradeId,
+      portfolioId: input.portfolioId,
+      securityId: input.securityId,
+      side: input.side,
+      quantity: input.quantity,
+      price: input.price,
+      tradeDate: input.tradeDate,
+      currency: input.currency,
+      createdAt: new Date().toISOString(),
+    };
 
-      const created = await this.trades.create(trade);
+    const created = await this.trades.create(trade);
+
+    if (reservation.status !== "COMPLETED") {
       await this.idempotency.markCompleted(scope, input.idempotencyKey, created.id);
-
-      return created;
-    } catch (error) {
-      try {
-        await this.idempotency.release(scope, input.idempotencyKey);
-      } catch (releaseError) {
-        if (error instanceof Error && error.cause === undefined) {
-          Object.defineProperty(error, "cause", {
-            value: releaseError,
-            configurable: true,
-          });
-        }
-      }
-      throw error;
     }
+
+    return created;
   }
 }
