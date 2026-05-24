@@ -25,13 +25,16 @@ function parseAuthToken(token: string): AuthenticatedContext | null {
   }
 
   const expectedSignature = signTokenPayload(payloadSegment);
-  const actualSignature = Buffer.from(signatureSegment);
-  const expectedSignatureBuffer = Buffer.from(expectedSignature);
-
-  if (
-    actualSignature.length !== expectedSignatureBuffer.length
-    || !timingSafeEqual(actualSignature, expectedSignatureBuffer)
-  ) {
+  try {
+    if (
+      !timingSafeEqual(
+        Buffer.from(signatureSegment),
+        Buffer.from(expectedSignature),
+      )
+    ) {
+      return null;
+    }
+  } catch {
     return null;
   }
 

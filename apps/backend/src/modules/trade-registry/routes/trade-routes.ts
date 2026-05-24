@@ -23,14 +23,13 @@ export async function registerTradeRoutes(
       return;
     }
 
+    const portfolioIds = (await portfolioService.listUserPortfolios(context.userId)).map(
+      (portfolio) => portfolio.id,
+    );
     const items =
       context.role === "ADMIN"
         ? await tradeRegistryService.listTrades()
-        : await tradeRegistryService.listTradesByPortfolioIds(
-            (await portfolioService.listUserPortfolios(context.userId)).map(
-              (portfolio) => portfolio.id,
-            ),
-          );
+        : await tradeRegistryService.listTradesByPortfolioIds(portfolioIds);
     return { items };
   });
 
