@@ -38,6 +38,10 @@ export class TradeRegistryService {
     return this.trades.list();
   }
 
+  async listTradesByPortfolioIds(portfolioIds: string[]): Promise<TradeRecord[]> {
+    return this.trades.listByPortfolioIds(portfolioIds);
+  }
+
   async registerTrade(input: RegisterTradeInput): Promise<TradeRecord> {
     const scope = "trade-registry.register";
     const expiresAt = new Date(

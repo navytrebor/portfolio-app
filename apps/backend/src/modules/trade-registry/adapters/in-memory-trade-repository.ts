@@ -21,4 +21,9 @@ export class InMemoryTradeRepository implements TradeRepositoryPort {
   async list(): Promise<TradeRecord[]> {
     return [...this.items];
   }
+
+  async listByPortfolioIds(portfolioIds: string[]): Promise<TradeRecord[]> {
+    const allowed = new Set(portfolioIds);
+    return this.items.filter((item) => allowed.has(item.portfolioId));
+  }
 }

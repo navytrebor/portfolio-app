@@ -12,6 +12,7 @@ dotenv.config({ path: path.resolve(__dirname, "../../../../.env") });
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(4000),
+  AUTH_TOKEN_SECRET: z.string().min(1),
   POSTGRES_HOST: z.string().min(1),
   POSTGRES_PORT: z.coerce.number().int().positive().default(5432),
   POSTGRES_DB: z.string().min(1),
