@@ -1,8 +1,8 @@
 import { InMemoryUserRepository } from "../modules/identity/adapters/in-memory-user-repository";
 import { IdentityService } from "../modules/identity/services/identity-service";
-import { InMemoryPortfolioRepository } from "../modules/portfolio/adapters/in-memory-portfolio-repository";
+import { PostgresPortfolioRepository } from "../modules/portfolio/adapters/postgres-portfolio-repository";
 import { PortfolioService } from "../modules/portfolio/services/portfolio-service";
-import { InMemorySecurityRepository } from "../modules/security-master/adapters/in-memory-security-repository";
+import { PostgresSecurityRepository } from "../modules/security-master/adapters/postgres-security-repository";
 import { SecurityMasterService } from "../modules/security-master/services/security-master-service";
 import { PostgresPricingFxRepository } from "../modules/pricing-fx/adapters/postgres-pricing-fx-repository";
 import { PricingFxService } from "../modules/pricing-fx/services/pricing-fx-service";
@@ -35,9 +35,11 @@ export type AppContainer = {
 
 export function buildContainer(): AppContainer {
   const identityService = new IdentityService(new InMemoryUserRepository());
-  const portfolioService = new PortfolioService(new InMemoryPortfolioRepository());
+  const portfolioService = new PortfolioService(
+    new PostgresPortfolioRepository(postgresPool),
+  );
   const securityMasterService = new SecurityMasterService(
-    new InMemorySecurityRepository(),
+    new PostgresSecurityRepository(postgresPool),
   );
 
   const pricingFxService = new PricingFxService(

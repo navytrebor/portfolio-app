@@ -1,0 +1,185 @@
+import assert from "node:assert/strict";
+import { Pool } from "pg";
+import { env } from "../config/env";
+
+type SeedContext = {
+  userId: string;
+  portfolioId: string;
+  securityId: string;
+  asOf: string;
+};
+
+function apiBaseUrl(): string {
+  return process.env.API_BASE_URL ?? `http://127.0.0.1:${env.PORT}`;
+}
+
+async function getSeedContext(pool: Pool): Promise<SeedContext> {
+  const userResult = await pool.query<{ id: string }>(
+    `SELECT id FROM users ORDER BY created_at ASC LIMIT 1`,
+  );
+  assert.ok(userResult.rows[0], "No users found. Run db:seed first.");
+
+  const userId = userResult.rows[0].id;
+
+  const portfolioResult = await pool.query<{ id: string }>(
+    `SELECT id FROM portfolios WHERE user_id = $1 ORDER BY created_at ASC LIMIT 1`,
+    [userId],
+  );
+  assert.ok(portfolioResult.rows[0], "No portfolios found for seeded user.");
+
+  const securityResult = await pool.query<{ id: string }>(
+    `SELECT id FROM securities ORDER BY created_at ASC LIMIT 1`,
+  );
+  assert.ok(securityResult.rows[0], "No securities found. Run db:seed first.");
+
+  return {
+    userId,
+    portfolioId: portfolioResult.rows[0].id,
+    securityId: securityResult.rows[0].id,
+    asOf: new Date().toISOString(),
+  };
+}
+
+async function callApi(
+  path: string,
+  options: RequestInit,
+): Promise<{ status: number; body: unknown }> {
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl()}${path}`, options);
+  } catch (error) {
+    throw new Error(
+      `Unable to reach backend at ${apiBaseUrl()}. Start backend with pnpm --filter @portfolio/backend dev.`,
+      { cause: error },
+    );
+  }
+
+  const text = await response.text();
+  let body: unknown = text;
+
+  try {
+    body = text.length > 0 ? JSON.parse(text) : null;
+  } catch {
+    body = text;
+  }
+
+  return {
+    status: response.status,
+    body,
+  };
+}
+
+async function run() {
+  const pool = new Pool({
+    host: env.POSTGRES_HOST,
+    port: env.POSTGRES_PORT,
+    database: env.POSTGRES_DB,
+    user: env.POSTGRES_USER,
+    password: env.POSTGRES_PASSWORD,
+    ssl: env.POSTGRES_SSL ? { rejectUnauthorized: false } : false,
+  });
+
+  try {
+    const context = await getSeedContext(pool);
+
+    const authHeaders = {
+      "x-user-id": context.userId,
+      "content-type": "application/json",
+    };
+
+    const portfolios = await callApi("/api/portfolios", {
+      method: "GET",
+      headers: {
+        ...authHeaders,
+        "x-user-role": "viewer",
+      },
+    });
+    assert.equal(portfolios.status, 200, "Expected portfolios endpoint to return 200");
+
+    const security = await callApi(`/api/securities/${context.securityId}`, {
+      method: "GET",
+      headers: {
+        ...authHeaders,
+        "x-user-role": "viewer",
+      },
+    });
+    assert.equal(security.status, 200, "Expected securities endpoint to return 200");
+
+    const trades = await callApi("/api/trades", {
+      method: "GET",
+      headers: {
+        ...authHeaders,
+        "x-user-role": "analyst",
+      },
+    });
+    assert.equal(trades.status, 200, "Expected trades endpoint to return 200");
+
+    const valuationRun = await callApi("/api/valuations/run", {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+        "x-user-role": "analyst",
+      },
+      body: JSON.stringify({
+        portfolioId: context.portfolioId,
+        asOf: context.asOf,
+      }),
+    });
+    assert.equal(valuationRun.status, 201, "Expected valuation run to return 201");
+
+    const performanceRun = await callApi("/api/analytics/performance/run", {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+        "x-user-role": "analyst",
+      },
+      body: JSON.stringify({
+        portfolioId: context.portfolioId,
+        asOf: context.asOf,
+      }),
+    });
+    assert.equal(performanceRun.status, 201, "Expected analytics run to return 201");
+
+    const forbiddenTradeWrite = await callApi("/api/trades", {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+        "x-user-role": "viewer",
+      },
+      body: JSON.stringify({
+        portfolioId: context.portfolioId,
+        securityId: context.securityId,
+        side: "BUY",
+        quantity: 1,
+        price: 100,
+        tradeDate: context.asOf,
+        currency: "USD",
+      }),
+    });
+    assert.equal(forbiddenTradeWrite.status, 403, "Expected viewer trade write to be denied");
+
+    console.log("authenticated-api-smoke: ok");
+    console.log(
+      JSON.stringify(
+        {
+          baseUrl: apiBaseUrl(),
+          portfolioStatus: portfolios.status,
+          securityStatus: security.status,
+          tradesStatus: trades.status,
+          valuationStatus: valuationRun.status,
+          analyticsStatus: performanceRun.status,
+          forbiddenTradeWriteStatus: forbiddenTradeWrite.status,
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await pool.end();
+  }
+}
+
+run().catch((error) => {
+  console.error("authenticated-api-smoke: failed", error);
+  process.exitCode = 1;
+});

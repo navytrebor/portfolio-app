@@ -2,7 +2,11 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { env } from "./config/env";
 import { buildContainer } from "./bootstrap/container";
+import { registerPortfolioRoutes } from "./modules/portfolio/routes/portfolio-routes";
+import { registerSecurityRoutes } from "./modules/security-master/routes/security-routes";
 import { registerTradeRoutes } from "./modules/trade-registry/routes/trade-routes";
+import { registerValuationRoutes } from "./modules/valuation/routes/valuation-routes";
+import { registerPerformanceRoutes } from "./modules/performance/routes/performance-routes";
 import { moduleDependencyRules } from "./modules/boundary-rules";
 
 const app = Fastify({ logger: true });
@@ -12,7 +16,11 @@ await app.register(cors, {
   origin: true,
 });
 
+await registerPortfolioRoutes(app, container.portfolioService);
+await registerSecurityRoutes(app, container.securityMasterService);
 await registerTradeRoutes(app, container.tradeRegistryService);
+await registerValuationRoutes(app, container.valuationService);
+await registerPerformanceRoutes(app, container.performanceService);
 
 app.get("/health", async () => {
   return {

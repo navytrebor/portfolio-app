@@ -2,17 +2,26 @@ import type { FastifyInstance } from "fastify";
 import { createTradeRequestSchema } from "@portfolio/contracts";
 import type { TradeRegistryService } from "../application/services/trade-registry-service";
 import { IdempotencyPayloadMismatchError } from "../application/services/trade-registry-service";
+import { requireRole } from "../../../auth/request-auth";
 
 export async function registerTradeRoutes(
   app: FastifyInstance,
   tradeRegistryService: TradeRegistryService,
 ) {
-  app.get("/api/trades", async () => {
+  app.get("/api/trades", async (request, reply) => {
+    if (!requireRole(request, reply, ["ADMIN", "TRADER", "ANALYST", "VIEWER"])) {
+      return;
+    }
+
     const items = await tradeRegistryService.listTrades();
     return { items };
   });
 
   app.post("/api/trades", async (request, reply) => {
+    if (!requireRole(request, reply, ["ADMIN", "TRADER"])) {
+      return;
+    }
+
     const parsed = createTradeRequestSchema.safeParse(request.body);
 
     if (!parsed.success) {
