@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { Pool } from "pg";
+import { createAuthToken, type UserRole } from "../auth/request-auth";
 import { env } from "../config/env";
 
 type SeedContext = {
@@ -8,6 +9,8 @@ type SeedContext = {
   securityId: string;
   asOf: string;
 };
+
+const REQUEST_TIMEOUT_MS = 10_000;
 
 function apiBaseUrl(): string {
   return process.env.API_BASE_URL ?? `http://127.0.0.1:${env.PORT}`;
@@ -45,13 +48,27 @@ async function callApi(
   options: RequestInit,
 ): Promise<{ status: number; body: unknown }> {
   let response: Response;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    response = await fetch(`${apiBaseUrl()}${path}`, options);
+    response = await fetch(`${apiBaseUrl()}${path}`, {
+      ...options,
+      signal: controller.signal,
+    });
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(
+        `Request to ${apiBaseUrl()}${path} timed out after ${REQUEST_TIMEOUT_MS}ms.`,
+        { cause: error },
+      );
+    }
+
     throw new Error(
       `Unable to reach backend at ${apiBaseUrl()}. Start backend with pnpm --filter @portfolio/backend dev.`,
       { cause: error },
     );
+  } finally {
+    clearTimeout(timeout);
   }
 
   const text = await response.text();
@@ -69,6 +86,13 @@ async function callApi(
   };
 }
 
+function authHeaders(userId: string, role: UserRole): Record<string, string> {
+  return {
+    authorization: `Bearer ${createAuthToken({ userId, role })}`,
+    "content-type": "application/json",
+  };
+}
+
 async function run() {
   const pool = new Pool({
     host: env.POSTGRES_HOST,
@@ -82,44 +106,27 @@ async function run() {
   try {
     const context = await getSeedContext(pool);
 
-    const authHeaders = {
-      "x-user-id": context.userId,
-      "content-type": "application/json",
-    };
-
     const portfolios = await callApi("/api/portfolios", {
       method: "GET",
-      headers: {
-        ...authHeaders,
-        "x-user-role": "viewer",
-      },
+      headers: authHeaders(context.userId, "VIEWER"),
     });
     assert.equal(portfolios.status, 200, "Expected portfolios endpoint to return 200");
 
     const security = await callApi(`/api/securities/${context.securityId}`, {
       method: "GET",
-      headers: {
-        ...authHeaders,
-        "x-user-role": "viewer",
-      },
+      headers: authHeaders(context.userId, "VIEWER"),
     });
     assert.equal(security.status, 200, "Expected securities endpoint to return 200");
 
     const trades = await callApi("/api/trades", {
       method: "GET",
-      headers: {
-        ...authHeaders,
-        "x-user-role": "analyst",
-      },
+      headers: authHeaders(context.userId, "ANALYST"),
     });
     assert.equal(trades.status, 200, "Expected trades endpoint to return 200");
 
     const valuationRun = await callApi("/api/valuations/run", {
       method: "POST",
-      headers: {
-        ...authHeaders,
-        "x-user-role": "analyst",
-      },
+      headers: authHeaders(context.userId, "ANALYST"),
       body: JSON.stringify({
         portfolioId: context.portfolioId,
         asOf: context.asOf,
@@ -129,10 +136,7 @@ async function run() {
 
     const performanceRun = await callApi("/api/analytics/performance/run", {
       method: "POST",
-      headers: {
-        ...authHeaders,
-        "x-user-role": "analyst",
-      },
+      headers: authHeaders(context.userId, "ANALYST"),
       body: JSON.stringify({
         portfolioId: context.portfolioId,
         asOf: context.asOf,
@@ -142,10 +146,7 @@ async function run() {
 
     const forbiddenTradeWrite = await callApi("/api/trades", {
       method: "POST",
-      headers: {
-        ...authHeaders,
-        "x-user-role": "viewer",
-      },
+      headers: authHeaders(context.userId, "VIEWER"),
       body: JSON.stringify({
         portfolioId: context.portfolioId,
         securityId: context.securityId,

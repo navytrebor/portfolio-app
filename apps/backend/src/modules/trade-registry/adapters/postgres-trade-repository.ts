@@ -103,4 +103,23 @@ export class PostgresTradeRepository implements TradeRepositoryPort {
 
     return result.rows.map(rowToTrade);
   }
+
+  async listByPortfolioIds(portfolioIds: string[]): Promise<TradeRecord[]> {
+    if (portfolioIds.length === 0) {
+      return [];
+    }
+
+    const result = await this.pool.query<TradeRow>(
+      `
+      SELECT id, portfolio_id, security_id, side, quantity, price, trade_date, currency, created_at
+      FROM trades
+      WHERE portfolio_id = ANY($1::uuid[])
+      ORDER BY trade_date DESC, created_at DESC
+      LIMIT 500
+      `,
+      [portfolioIds],
+    );
+
+    return result.rows.map(rowToTrade);
+  }
 }

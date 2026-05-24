@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import type { IdentityService } from "../../identity/services/identity-service";
 import type { SecurityMasterService } from "../services/security-master-service";
 import { requireRole } from "../../../auth/request-auth";
 
@@ -10,9 +11,17 @@ const paramsSchema = z.object({
 export async function registerSecurityRoutes(
   app: FastifyInstance,
   securityMasterService: SecurityMasterService,
+  identityService: IdentityService,
 ) {
   app.get("/api/securities/:securityId", async (request, reply) => {
-    if (!requireRole(request, reply, ["ADMIN", "TRADER", "ANALYST", "VIEWER"])) {
+    if (
+      !(await requireRole(
+        request,
+        reply,
+        identityService,
+        ["ADMIN", "TRADER", "ANALYST", "VIEWER"],
+      ))
+    ) {
       return;
     }
 

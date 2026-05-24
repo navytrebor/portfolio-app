@@ -16,11 +16,26 @@ await app.register(cors, {
   origin: true,
 });
 
-await registerPortfolioRoutes(app, container.portfolioService);
-await registerSecurityRoutes(app, container.securityMasterService);
-await registerTradeRoutes(app, container.tradeRegistryService);
-await registerValuationRoutes(app, container.valuationService);
-await registerPerformanceRoutes(app, container.performanceService);
+await registerPortfolioRoutes(app, container.portfolioService, container.identityService);
+await registerSecurityRoutes(app, container.securityMasterService, container.identityService);
+await registerTradeRoutes(
+  app,
+  container.tradeRegistryService,
+  container.portfolioService,
+  container.identityService,
+);
+await registerValuationRoutes(
+  app,
+  container.valuationService,
+  container.portfolioService,
+  container.identityService,
+);
+await registerPerformanceRoutes(
+  app,
+  container.performanceService,
+  container.portfolioService,
+  container.identityService,
+);
 
 app.get("/health", async () => {
   return {

@@ -1,4 +1,4 @@
-import { InMemoryUserRepository } from "../modules/identity/adapters/in-memory-user-repository";
+import { PostgresUserRepository } from "../modules/identity/adapters/postgres-user-repository";
 import { IdentityService } from "../modules/identity/services/identity-service";
 import { PostgresPortfolioRepository } from "../modules/portfolio/adapters/postgres-portfolio-repository";
 import { PortfolioService } from "../modules/portfolio/services/portfolio-service";
@@ -34,7 +34,7 @@ export type AppContainer = {
 };
 
 export function buildContainer(): AppContainer {
-  const identityService = new IdentityService(new InMemoryUserRepository());
+  const identityService = new IdentityService(new PostgresUserRepository(postgresPool));
   const portfolioService = new PortfolioService(
     new PostgresPortfolioRepository(postgresPool),
   );
