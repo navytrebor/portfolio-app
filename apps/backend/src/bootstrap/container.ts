@@ -4,7 +4,7 @@ import { InMemoryPortfolioRepository } from "../modules/portfolio/adapters/in-me
 import { PortfolioService } from "../modules/portfolio/services/portfolio-service";
 import { InMemorySecurityRepository } from "../modules/security-master/adapters/in-memory-security-repository";
 import { SecurityMasterService } from "../modules/security-master/services/security-master-service";
-import { InMemoryPricingFxRepository } from "../modules/pricing-fx/adapters/in-memory-pricing-fx-repository";
+import { PostgresPricingFxRepository } from "../modules/pricing-fx/adapters/postgres-pricing-fx-repository";
 import { PricingFxService } from "../modules/pricing-fx/services/pricing-fx-service";
 import { PostgresIdempotencyStore } from "../modules/trade-registry/adapters/postgres-idempotency-store";
 import { PostgresTradeRepository } from "../modules/trade-registry/adapters/postgres-trade-repository";
@@ -40,7 +40,9 @@ export function buildContainer(): AppContainer {
     new InMemorySecurityRepository(),
   );
 
-  const pricingFxService = new PricingFxService(new InMemoryPricingFxRepository());
+  const pricingFxService = new PricingFxService(
+    new PostgresPricingFxRepository(postgresPool),
+  );
 
   const tradeRegistryService = new TradeRegistryService(
     new PostgresTradeRepository(postgresPool),
