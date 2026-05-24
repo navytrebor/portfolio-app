@@ -83,7 +83,7 @@ export async function requireRole(
   const context = bearerToken ? parseAuthToken(bearerToken) : null;
 
   if (!context) {
-    void reply.status(401).send({
+    reply.status(401).send({
       message: "Authentication required. Provide a valid Bearer token.",
     });
     return null;
@@ -91,14 +91,14 @@ export async function requireRole(
 
   const user = await identityService.getUser(context.userId);
   if (!user) {
-    void reply.status(401).send({
+    reply.status(401).send({
       message: "Authentication required. Provide a valid Bearer token.",
     });
     return null;
   }
 
   if (!allowedRoles.includes(context.role)) {
-    void reply.status(403).send({
+    reply.status(403).send({
       message: "Insufficient role for this endpoint",
       requiredRoles: allowedRoles,
       currentRole: context.role,
