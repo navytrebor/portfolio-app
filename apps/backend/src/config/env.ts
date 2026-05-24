@@ -32,6 +32,10 @@ const envSchema = z.object({
 
 const parsedEnv = envSchema.parse(process.env);
 
+if (parsedEnv.NODE_ENV === "production" && !parsedEnv.AUTH_TOKEN_SECRET) {
+  throw new Error("AUTH_TOKEN_SECRET must be set in production");
+}
+
 export const env = {
   ...parsedEnv,
   AUTH_TOKEN_SECRET: parsedEnv.AUTH_TOKEN_SECRET ?? parsedEnv.POSTGRES_PASSWORD,

@@ -89,7 +89,7 @@ export async function requireRole(
   const user = await identityService.getUser(context.userId);
   if (!user) {
     void reply.status(401).send({
-      message: "Authenticated user was not found",
+      message: "Authentication required. Provide a valid Bearer token.",
     });
     return null;
   }
