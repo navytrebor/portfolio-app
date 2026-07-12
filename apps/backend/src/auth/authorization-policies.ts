@@ -1,4 +1,4 @@
-import type { UserRole } from "./request-auth";
+import type { UserRole } from "@portfolio/contracts";
 
 export const rolePolicies = {
   portfoliosRead: ["ADMIN", "TRADER", "ANALYST", "VIEWER"],
