@@ -4,6 +4,10 @@ import type { PricingFxRepository } from "../repositories/pricing-fx-repository"
 export class PricingFxService {
   constructor(private readonly repository: PricingFxRepository) {}
 
+  async getLatestMarketDataAsOfDate(): Promise<string | null> {
+    return this.repository.getLatestMarketDataAsOfDate();
+  }
+
   async getSecurityPrice(securityId: string, asOf: string): Promise<SecurityPrice | null> {
     return this.repository.getSecurityPrice(securityId, asOf);
   }

@@ -4,6 +4,10 @@ import type { PortfolioRepository } from "../repositories/portfolio-repository";
 export class InMemoryPortfolioRepository implements PortfolioRepository {
   private readonly items: Portfolio[] = [];
 
+  async listAll(): Promise<Portfolio[]> {
+    return [...this.items];
+  }
+
   async findById(id: string): Promise<Portfolio | null> {
     return this.items.find((portfolio) => portfolio.id === id) ?? null;
   }

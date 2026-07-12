@@ -13,6 +13,7 @@
     "db:seed:smoke": "tsx src/db/seed.ts --mode=upsert --scale=smoke --seed=phase2-default-001",
     "pricing-fx:smoke": "tsx src/modules/pricing-fx/services/pricing-fx-ingestion-smoke.ts",
     "api:smoke:auth": "tsx src/smoke/authenticated-api-smoke.ts",
+    "workflows:smoke": "tsx src/smoke/background-workflow-smoke.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

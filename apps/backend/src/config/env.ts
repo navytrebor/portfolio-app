@@ -29,6 +29,18 @@ const envSchema = z.object({
   PRICING_PRICE_SLA_HOURS: z.coerce.number().int().positive().default(36),
   PRICING_FX_SLA_HOURS: z.coerce.number().int().positive().default(36),
   PERFORMANCE_BENCHMARK_TICKER: z.string().min(1).default("SPY"),
+  BACKGROUND_WORKFLOWS_ENABLED: z
+    .string()
+    .transform((v) => v === "true" || v === "1")
+    .default("false"),
+  BACKGROUND_WORKFLOWS_RUN_ON_START: z
+    .string()
+    .transform((v) => v === "true" || v === "1")
+    .default("false"),
+  PRICING_SYNC_INTERVAL_SECONDS: z.coerce.number().int().positive().default(300),
+  VALUATION_EOD_INTERVAL_SECONDS: z.coerce.number().int().positive().default(900),
+  ANALYTICS_REFRESH_INTERVAL_SECONDS: z.coerce.number().int().positive().default(1200),
+  VALUATION_EOD_UTC_HOUR: z.coerce.number().int().min(0).max(23).default(17),
 });
 
 export const env = envSchema.parse(process.env);

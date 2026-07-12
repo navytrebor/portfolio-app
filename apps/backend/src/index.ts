@@ -12,6 +12,30 @@ import { moduleDependencyRules } from "./modules/boundary-rules";
 const app = Fastify({ logger: true });
 const container = buildContainer();
 
+container.backgroundWorkflowOrchestrator.setLogger({
+  info: (payload, message) => {
+    if (message) {
+      app.log.info(payload, message);
+      return;
+    }
+    app.log.info(payload);
+  },
+  warn: (payload, message) => {
+    if (message) {
+      app.log.warn(payload, message);
+      return;
+    }
+    app.log.warn(payload);
+  },
+  error: (payload, message) => {
+    if (message) {
+      app.log.error(payload, message);
+      return;
+    }
+    app.log.error(payload);
+  },
+});
+
 await app.register(cors, {
   origin: true,
 });
@@ -48,8 +72,40 @@ app.get("/health", async () => {
 
 const port = env.PORT;
 
+let shuttingDown = false;
+
+async function shutdown(signal: string) {
+  if (shuttingDown) {
+    return;
+  }
+
+  shuttingDown = true;
+  app.log.info({ signal }, "shutdown initiated");
+
+  try {
+    await container.backgroundWorkflowOrchestrator.stop();
+    await app.close();
+    process.exit(0);
+  } catch (error) {
+    app.log.error({ error }, "shutdown failed");
+    process.exit(1);
+  }
+}
+
 try {
   await app.listen({ host: "0.0.0.0", port });
+
+  if (env.BACKGROUND_WORKFLOWS_ENABLED) {
+    await container.backgroundWorkflowOrchestrator.start();
+  }
+
+  process.on("SIGINT", () => {
+    void shutdown("SIGINT");
+  });
+
+  process.on("SIGTERM", () => {
+    void shutdown("SIGTERM");
+  });
 } catch (err) {
   app.log.error(err);
   process.exit(1);

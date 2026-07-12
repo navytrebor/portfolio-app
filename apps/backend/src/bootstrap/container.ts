@@ -6,6 +6,8 @@ import { PostgresSecurityRepository } from "../modules/security-master/adapters/
 import { SecurityMasterService } from "../modules/security-master/services/security-master-service";
 import { PostgresPricingFxRepository } from "../modules/pricing-fx/adapters/postgres-pricing-fx-repository";
 import { PricingFxService } from "../modules/pricing-fx/services/pricing-fx-service";
+import { DeterministicPricingFxProvider } from "../modules/pricing-fx/services/deterministic-pricing-fx-provider";
+import { PricingFxIngestionService } from "../modules/pricing-fx/services/pricing-fx-ingestion-service";
 import { PostgresIdempotencyStore } from "../modules/trade-registry/adapters/postgres-idempotency-store";
 import { PostgresTradeRepository } from "../modules/trade-registry/adapters/postgres-trade-repository";
 import { TradeRegistryService } from "../modules/trade-registry/application/services/trade-registry-service";
@@ -23,6 +25,7 @@ import {
   PostgresValuationHistory,
 } from "../modules/performance/adapters/postgres-performance-adapters";
 import { PerformanceService } from "../modules/performance/application/services/performance-service";
+import { BackgroundWorkflowOrchestrator } from "../workflows/background-workflow-orchestrator";
 import { postgresPool } from "../db/postgres-pool";
 import { env } from "../config/env";
 
@@ -34,6 +37,7 @@ export type AppContainer = {
   tradeRegistryService: TradeRegistryService;
   valuationService: ValuationService;
   performanceService: PerformanceService;
+  backgroundWorkflowOrchestrator: BackgroundWorkflowOrchestrator;
 };
 
 export function buildContainer(): AppContainer {
@@ -46,6 +50,19 @@ export function buildContainer(): AppContainer {
 
   const pricingFxRepository = new PostgresPricingFxRepository(postgresPool);
   const pricingFxService = new PricingFxService(pricingFxRepository);
+  const pricingFxProvider =
+    env.NODE_ENV === "production"
+      ? (() => {
+          throw new Error(
+            "No real PricingFxProvider configured for production; refusing to use DeterministicPricingFxProvider",
+          );
+        })()
+      : new DeterministicPricingFxProvider();
+
+  const pricingFxIngestionService = new PricingFxIngestionService(
+    pricingFxRepository,
+    pricingFxProvider,
+  );
 
   const tradeRepository = new PostgresTradeRepository(postgresPool);
 
@@ -69,6 +86,15 @@ export function buildContainer(): AppContainer {
     new PostgresPerformanceMetricsRepository(postgresPool),
   );
 
+  const backgroundWorkflowOrchestrator = new BackgroundWorkflowOrchestrator(
+    pricingFxIngestionService,
+    valuationService,
+    performanceService,
+    portfolioService,
+    pricingFxService,
+    securityMasterService,
+  );
+
   return {
     identityService,
     portfolioService,
@@ -77,5 +103,6 @@ export function buildContainer(): AppContainer {
     tradeRegistryService,
     valuationService,
     performanceService,
+    backgroundWorkflowOrchestrator,
   };
 }
