@@ -112,6 +112,12 @@ async function run() {
     });
     assert.equal(portfolios.status, 200, "Expected portfolios endpoint to return 200");
 
+    const securities = await callApi("/api/securities", {
+      method: "GET",
+      headers: authHeaders(context.userId, "VIEWER"),
+    });
+    assert.equal(securities.status, 200, "Expected securities collection endpoint to return 200");
+
     const security = await callApi(`/api/securities/${context.securityId}`, {
       method: "GET",
       headers: authHeaders(context.userId, "VIEWER"),
@@ -165,6 +171,7 @@ async function run() {
         {
           baseUrl: apiBaseUrl(),
           portfolioStatus: portfolios.status,
+          securitiesStatus: securities.status,
           securityStatus: security.status,
           tradesStatus: trades.status,
           valuationStatus: valuationRun.status,

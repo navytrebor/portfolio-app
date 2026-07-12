@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { IdentityService } from "../../identity/services/identity-service";
 import type { PortfolioService } from "../../portfolio/services/portfolio-service";
+import { rolePolicies } from "../../../auth/authorization-policies";
 import type { PerformanceService } from "../application/services/performance-service";
 import { requireRole } from "../../../auth/request-auth";
 
@@ -17,7 +18,12 @@ export async function registerPerformanceRoutes(
   identityService: IdentityService,
 ) {
   app.post("/api/analytics/performance/run", async (request, reply) => {
-    const context = await requireRole(request, reply, identityService, ["ADMIN", "ANALYST"]);
+    const context = await requireRole(
+      request,
+      reply,
+      identityService,
+      rolePolicies.analyticsRun,
+    );
     if (!context) {
       return;
     }

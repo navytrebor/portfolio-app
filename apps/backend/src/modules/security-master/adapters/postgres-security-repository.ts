@@ -21,6 +21,18 @@ function rowToSecurity(row: SecurityRow): Security {
 export class PostgresSecurityRepository implements SecurityRepository {
   constructor(private readonly pool: Pool) {}
 
+  async listAll(): Promise<Security[]> {
+    const result = await this.pool.query<SecurityRow>(
+      `
+      SELECT id, ticker, security_type, currency
+      FROM securities
+      ORDER BY ticker ASC
+      `,
+    );
+
+    return result.rows.map(rowToSecurity);
+  }
+
   async findById(id: string): Promise<Security | null> {
     const result = await this.pool.query<SecurityRow>(
       `
