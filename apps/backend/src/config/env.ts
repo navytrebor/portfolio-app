@@ -28,6 +28,7 @@ const envSchema = z.object({
   PRICING_FX_JOB_SOURCE: z.string().min(1).default("ingestion-job"),
   PRICING_PRICE_SLA_HOURS: z.coerce.number().int().positive().default(36),
   PRICING_FX_SLA_HOURS: z.coerce.number().int().positive().default(36),
+  PERFORMANCE_BENCHMARK_TICKER: z.string().min(1).default("SPY"),
 });
 
 export const env = envSchema.parse(process.env);
