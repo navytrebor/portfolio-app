@@ -223,13 +223,23 @@ export class PostgresConcentrationRisk implements ConcentrationRiskPort {
 
     const convertedValues: number[] = [];
     for (const position of positions.rows) {
-      const converted = await this.convertToBase(
-        Number(position.market_value),
-        position.currency,
-        baseCurrency,
-        snapshotAsOf,
-      );
-      convertedValues.push(converted);
+      try {
+        const converted = await this.convertToBase(
+          Number(position.market_value),
+          position.currency,
+          baseCurrency,
+          snapshotAsOf,
+        );
+        convertedValues.push(converted);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.startsWith("Missing FX rate for concentration conversion")
+        ) {
+          return null;
+        }
+        throw error;
+      }
     }
 
     const weights = convertedValues
