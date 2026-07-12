@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { Pool } from "pg";
 import { createAuthToken, type UserRole } from "../auth/request-auth";
 import { env } from "../config/env";
+import { API_V1_PREFIX } from "../http/api-versioning";
 
 type SeedContext = {
   userId: string;
@@ -115,31 +116,63 @@ async function run() {
   try {
     const context = await getSeedContext(pool);
 
-    const portfolios = await callApi("/api/portfolios", {
+    const portfolios = await callApi(`${API_V1_PREFIX}/portfolios`, {
       method: "GET",
       headers: authHeaders(context.userId, "VIEWER"),
     });
     assert.equal(portfolios.status, 200, "Expected portfolios endpoint to return 200");
 
-    const securities = await callApi("/api/securities", {
+    const portfoliosBody = portfolios.body as {
+      items?: unknown;
+      page?: { limit?: unknown; offset?: unknown; total?: unknown; returned?: unknown; hasMore?: unknown };
+    };
+    assert.equal(Array.isArray(portfoliosBody.items), true, "Expected paginated portfolio items");
+    assert.equal(typeof portfoliosBody.page?.total === "number", true, "Expected portfolio page metadata");
+
+    const securities = await callApi(`${API_V1_PREFIX}/securities?limit=2&offset=0&ticker=AAPL`, {
       method: "GET",
       headers: authHeaders(context.userId, "VIEWER"),
     });
     assert.equal(securities.status, 200, "Expected securities collection endpoint to return 200");
 
-    const security = await callApi(`/api/securities/${context.securityId}`, {
+    const securitiesBody = securities.body as {
+      items?: Array<{ ticker?: unknown }>;
+      page?: { returned?: unknown };
+    };
+    assert.equal(Array.isArray(securitiesBody.items), true, "Expected paginated securities items");
+    assert.equal(
+      securitiesBody.items?.every((item) => item.ticker === "AAPL") ?? false,
+      true,
+      "Expected securities filter to restrict by ticker",
+    );
+
+    const security = await callApi(`${API_V1_PREFIX}/securities/${context.securityId}`, {
       method: "GET",
       headers: authHeaders(context.userId, "VIEWER"),
     });
     assert.equal(security.status, 200, "Expected securities endpoint to return 200");
 
-    const trades = await callApi("/api/trades", {
+    const trades = await callApi(
+      `${API_V1_PREFIX}/trades?limit=10&offset=0&portfolioId=${context.portfolioId}`,
+      {
       method: "GET",
       headers: authHeaders(context.userId, "ANALYST"),
-    });
+      },
+    );
     assert.equal(trades.status, 200, "Expected trades endpoint to return 200");
 
-    const valuationRun = await callApi("/api/valuations/run", {
+    const tradesBody = trades.body as {
+      items?: Array<{ portfolioId?: unknown }>;
+      page?: { total?: unknown };
+    };
+    assert.equal(Array.isArray(tradesBody.items), true, "Expected paginated trade items");
+    assert.equal(
+      tradesBody.items?.every((item) => item.portfolioId === context.portfolioId) ?? false,
+      true,
+      "Expected trades filter to restrict by portfolioId",
+    );
+
+    const valuationRun = await callApi(`${API_V1_PREFIX}/valuations/run`, {
       method: "POST",
       headers: authHeaders(context.userId, "ANALYST"),
       body: JSON.stringify({
@@ -176,7 +209,7 @@ async function run() {
       "Expected valuation currency to match portfolio base currency",
     );
 
-    const performanceRun = await callApi("/api/analytics/performance/run", {
+    const performanceRun = await callApi(`${API_V1_PREFIX}/analytics/performance/run`, {
       method: "POST",
       headers: authHeaders(context.userId, "ANALYST"),
       body: JSON.stringify({
@@ -227,7 +260,7 @@ async function run() {
       "Expected top position weight metric",
     );
 
-    const forbiddenTradeWrite = await callApi("/api/trades", {
+    const forbiddenTradeWrite = await callApi(`${API_V1_PREFIX}/trades`, {
       method: "POST",
       headers: authHeaders(context.userId, "VIEWER"),
       body: JSON.stringify({
@@ -241,6 +274,11 @@ async function run() {
       }),
     });
     assert.equal(forbiddenTradeWrite.status, 403, "Expected viewer trade write to be denied");
+    const forbiddenBody = forbiddenTradeWrite.body as {
+      error?: { code?: unknown; requestId?: unknown };
+    };
+    assert.equal(forbiddenBody.error?.code, "FORBIDDEN", "Expected consistent error code");
+    assert.equal(typeof forbiddenBody.error?.requestId === "string", true, "Expected requestId in error envelope");
 
     console.log("authenticated-api-smoke: ok");
     console.log(

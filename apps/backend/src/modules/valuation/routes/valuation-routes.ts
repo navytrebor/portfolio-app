@@ -5,6 +5,8 @@ import type { PortfolioService } from "../../portfolio/services/portfolio-servic
 import { rolePolicies } from "../../../auth/authorization-policies";
 import type { ValuationService } from "../application/services/valuation-service";
 import { requireRole } from "../../../auth/request-auth";
+import { apiV1Path } from "../../../http/api-versioning";
+import { badRequest, forbidden, sendApiError } from "../../../http/api-errors";
 
 const runValuationSchema = z.object({
   portfolioId: z.string().uuid(),
@@ -17,7 +19,7 @@ export async function registerValuationRoutes(
   portfolioService: PortfolioService,
   identityService: IdentityService,
 ) {
-  app.post("/api/valuations/run", async (request, reply) => {
+  app.post(apiV1Path("/valuations/run"), async (request, reply) => {
     const context = await requireRole(
       request,
       reply,
@@ -30,17 +32,14 @@ export async function registerValuationRoutes(
 
     const parsed = runValuationSchema.safeParse(request.body);
     if (!parsed.success) {
-      return reply.status(400).send({
-        message: "Invalid valuation payload",
-        issues: parsed.error.issues,
-      });
+      return sendApiError(reply, request.id, badRequest("Invalid valuation payload", parsed.error.issues));
     }
 
     if (context.role !== "ADMIN") {
       const portfolios = await portfolioService.listUserPortfolios(context.userId);
       const hasAccess = portfolios.some((portfolio) => portfolio.id === parsed.data.portfolioId);
       if (!hasAccess) {
-        return reply.status(403).send({ message: "Portfolio access denied" });
+        return sendApiError(reply, request.id, forbidden("Portfolio access denied"));
       }
     }
 

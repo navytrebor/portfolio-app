@@ -2,6 +2,8 @@
 
 Monorepo scaffold for a security trade registry, portfolio valuation, and performance analytics platform.
 
+The backend API now exposes versioned endpoints under `/api/v1` with standardized pagination, filtering, and error responses.
+
 ## Workspace Layout
 
 - `apps/frontend` - React + TypeScript UI
@@ -9,6 +11,7 @@ Monorepo scaffold for a security trade registry, portfolio valuation, and perfor
 - `packages/contracts` - Shared domain and validation contracts
 - `infra` - Local infrastructure orchestration
 - `docs/adr` - Architecture Decision Records
+- `docs/backend-api.md` - Backend API contract and conventions
 
 ## Quick Start
 
@@ -22,10 +25,39 @@ Monorepo scaffold for a security trade registry, portfolio valuation, and perfor
 3. Start local infrastructure:
    - docker compose -f infra/docker-compose.yml up -d
 4. Run database migrations:
-   - pnpm --filter @portfolio/backend db:migrate
-4. Run apps:
+   - AUTH_TOKEN_SECRET=local-dev-secret pnpm --filter @portfolio/backend db:migrate
+5. Run apps:
    - pnpm dev:backend
    - pnpm dev:frontend
+
+## Backend API Conventions
+
+- Base path: `/api/v1`
+- Authentication: `Authorization: Bearer <token>`
+- Collection pagination: `limit` and `offset`
+- Current collection filters:
+  - `/api/v1/securities`: `ticker`, `currency`, `securityType`
+  - `/api/v1/trades`: `portfolioId`
+- Error envelope:
+
+```json
+{
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "Portfolio access denied",
+    "requestId": "req-123",
+    "details": {}
+  }
+}
+```
+
+See `docs/backend-api.md` for examples and endpoint conventions.
+
+## Validation Commands
+
+- Backend typecheck: `pnpm --filter @portfolio/backend typecheck`
+- Migration safety: `AUTH_TOKEN_SECRET=local-dev-secret pnpm --filter @portfolio/backend db:migrate`
+- Authenticated API smoke: `AUTH_TOKEN_SECRET=local-dev-secret pnpm --filter @portfolio/backend api:smoke:auth`
 
 ## Secrets And Environment
 

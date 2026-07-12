@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { env } from "./config/env";
 import { buildContainer } from "./bootstrap/container";
+import { registerApiErrorHandler } from "./http/api-errors";
 import { registerPortfolioRoutes } from "./modules/portfolio/routes/portfolio-routes";
 import { registerSecurityRoutes } from "./modules/security-master/routes/security-routes";
 import { registerTradeRoutes } from "./modules/trade-registry/routes/trade-routes";
@@ -11,6 +12,8 @@ import { moduleDependencyRules } from "./modules/boundary-rules";
 
 const app = Fastify({ logger: true });
 const container = buildContainer();
+
+registerApiErrorHandler(app);
 
 container.backgroundWorkflowOrchestrator.setLogger({
   info: (payload, message) => {

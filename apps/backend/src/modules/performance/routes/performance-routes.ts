@@ -5,6 +5,8 @@ import type { PortfolioService } from "../../portfolio/services/portfolio-servic
 import { rolePolicies } from "../../../auth/authorization-policies";
 import type { PerformanceService } from "../application/services/performance-service";
 import { requireRole } from "../../../auth/request-auth";
+import { apiV1Path } from "../../../http/api-versioning";
+import { badRequest, forbidden, sendApiError } from "../../../http/api-errors";
 
 const runPerformanceSchema = z.object({
   portfolioId: z.string().uuid(),
@@ -17,7 +19,7 @@ export async function registerPerformanceRoutes(
   portfolioService: PortfolioService,
   identityService: IdentityService,
 ) {
-  app.post("/api/analytics/performance/run", async (request, reply) => {
+  app.post(apiV1Path("/analytics/performance/run"), async (request, reply) => {
     const context = await requireRole(
       request,
       reply,
@@ -30,17 +32,14 @@ export async function registerPerformanceRoutes(
 
     const parsed = runPerformanceSchema.safeParse(request.body);
     if (!parsed.success) {
-      return reply.status(400).send({
-        message: "Invalid performance payload",
-        issues: parsed.error.issues,
-      });
+      return sendApiError(reply, request.id, badRequest("Invalid performance payload", parsed.error.issues));
     }
 
     if (context.role !== "ADMIN") {
       const portfolios = await portfolioService.listUserPortfolios(context.userId);
       const hasAccess = portfolios.some((portfolio) => portfolio.id === parsed.data.portfolioId);
       if (!hasAccess) {
-        return reply.status(403).send({ message: "Portfolio access denied" });
+        return sendApiError(reply, request.id, forbidden("Portfolio access denied"));
       }
     }
 
