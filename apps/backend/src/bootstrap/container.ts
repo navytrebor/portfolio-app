@@ -50,9 +50,18 @@ export function buildContainer(): AppContainer {
 
   const pricingFxRepository = new PostgresPricingFxRepository(postgresPool);
   const pricingFxService = new PricingFxService(pricingFxRepository);
+  const pricingFxProvider =
+    env.NODE_ENV === "production"
+      ? (() => {
+          throw new Error(
+            "No real PricingFxProvider configured for production; refusing to use DeterministicPricingFxProvider",
+          );
+        })()
+      : new DeterministicPricingFxProvider();
+
   const pricingFxIngestionService = new PricingFxIngestionService(
     pricingFxRepository,
-    new DeterministicPricingFxProvider(),
+    pricingFxProvider,
   );
 
   const tradeRepository = new PostgresTradeRepository(postgresPool);
