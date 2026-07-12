@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { createTradeRequestSchema } from "@portfolio/contracts";
 import type { IdentityService } from "../../identity/services/identity-service";
 import type { PortfolioService } from "../../portfolio/services/portfolio-service";
+import { rolePolicies } from "../../../auth/authorization-policies";
 import type { TradeRegistryService } from "../application/services/trade-registry-service";
 import { IdempotencyPayloadMismatchError } from "../application/services/trade-registry-service";
 import { requireRole } from "../../../auth/request-auth";
@@ -17,7 +18,7 @@ export async function registerTradeRoutes(
       request,
       reply,
       identityService,
-      ["ADMIN", "TRADER", "ANALYST", "VIEWER"],
+      rolePolicies.tradesRead,
     );
     if (!context) {
       return;
@@ -34,7 +35,7 @@ export async function registerTradeRoutes(
   });
 
   app.post("/api/trades", async (request, reply) => {
-    const context = await requireRole(request, reply, identityService, ["ADMIN", "TRADER"]);
+    const context = await requireRole(request, reply, identityService, rolePolicies.tradesWrite);
     if (!context) {
       return;
     }

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { IdentityService } from "../../identity/services/identity-service";
 import type { PortfolioService } from "../services/portfolio-service";
+import { rolePolicies } from "../../../auth/authorization-policies";
 import { requireRole } from "../../../auth/request-auth";
 
 export async function registerPortfolioRoutes(
@@ -13,7 +14,7 @@ export async function registerPortfolioRoutes(
       request,
       reply,
       identityService,
-      ["ADMIN", "TRADER", "ANALYST", "VIEWER"],
+      rolePolicies.portfoliosRead,
     );
     if (!context) {
       return;

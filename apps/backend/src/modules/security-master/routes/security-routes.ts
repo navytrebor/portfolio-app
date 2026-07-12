@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { IdentityService } from "../../identity/services/identity-service";
+import { rolePolicies } from "../../../auth/authorization-policies";
 import type { SecurityMasterService } from "../services/security-master-service";
 import { requireRole } from "../../../auth/request-auth";
 
@@ -13,15 +14,17 @@ export async function registerSecurityRoutes(
   securityMasterService: SecurityMasterService,
   identityService: IdentityService,
 ) {
+  app.get("/api/securities", async (request, reply) => {
+    if (!(await requireRole(request, reply, identityService, rolePolicies.securitiesRead))) {
+      return;
+    }
+
+    const items = await securityMasterService.listSecurities();
+    return { items };
+  });
+
   app.get("/api/securities/:securityId", async (request, reply) => {
-    if (
-      !(await requireRole(
-        request,
-        reply,
-        identityService,
-        ["ADMIN", "TRADER", "ANALYST", "VIEWER"],
-      ))
-    ) {
+    if (!(await requireRole(request, reply, identityService, rolePolicies.securitiesRead))) {
       return;
     }
 
