@@ -38,8 +38,12 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   });
 
   const text = await response.text();
-  const body = text.length > 0 ? (JSON.parse(text) as unknown) : null;
-
+  let body: unknown = null;
+  try {
+    body = text.length > 0 ? JSON.parse(text) : null;
+  } catch {
+    body = text;
+  }
   if (!response.ok) {
     const envelope = typeof body === "object" && body !== null ? (body as ApiErrorEnvelope) : undefined;
     throw new ApiRequestError(
