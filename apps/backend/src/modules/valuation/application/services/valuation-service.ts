@@ -68,7 +68,7 @@ export class ValuationService {
         quantity: position.quantity,
         averageCost: position.averageCost,
         marketValue,
-        currency: price.currency,
+        currency: position.currency,
       });
 
       securitiesValue += converted;
