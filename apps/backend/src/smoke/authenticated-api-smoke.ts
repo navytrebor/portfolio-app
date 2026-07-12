@@ -36,14 +36,13 @@ async function getSeedContext(pool: Pool): Promise<SeedContext> {
   );
   assert.ok(securityResult.rows[0], "No securities found. Run db:seed first.");
 
-  const latestPriceDateResult = await pool.query<{ latest_price_date: Date | null }>(
-    `SELECT MAX(price_date) AS latest_price_date FROM security_prices`,
+  const latestPriceDateResult = await pool.query<{ latest_price_date: string | null }>(
+    `SELECT MAX(price_date)::text AS latest_price_date FROM security_prices`,
   );
   const latestPriceDate = latestPriceDateResult.rows[0]?.latest_price_date;
   assert.ok(latestPriceDate, "No security prices found. Run db:seed first.");
 
-  const asOfDate = latestPriceDate.toISOString().slice(0, 10);
-
+  const asOfDate = latestPriceDate;
   return {
     userId,
     portfolioId: portfolioResult.rows[0].id,
