@@ -10,10 +10,11 @@ import { PostgresIdempotencyStore } from "../modules/trade-registry/adapters/pos
 import { PostgresTradeRepository } from "../modules/trade-registry/adapters/postgres-trade-repository";
 import { TradeRegistryService } from "../modules/trade-registry/application/services/trade-registry-service";
 import {
-  InMemoryPositionSource,
-  InMemoryPriceSource,
-  InMemoryValuationSnapshotRepository,
-} from "../modules/valuation/adapters/in-memory-valuation-adapters";
+  PortfolioBaseCurrencySource,
+  PostgresValuationSnapshotRepository,
+  PricingFxMarketDataSource,
+  TradeLedgerPositionSource,
+} from "../modules/valuation/adapters/postgres-valuation-adapters";
 import { ValuationService } from "../modules/valuation/application/services/valuation-service";
 import {
   InMemoryPerformanceMetricsRepository,
@@ -35,27 +36,28 @@ export type AppContainer = {
 
 export function buildContainer(): AppContainer {
   const identityService = new IdentityService(new PostgresUserRepository(postgresPool));
-  const portfolioService = new PortfolioService(
-    new PostgresPortfolioRepository(postgresPool),
-  );
+  const portfolioRepository = new PostgresPortfolioRepository(postgresPool);
+  const portfolioService = new PortfolioService(portfolioRepository);
   const securityMasterService = new SecurityMasterService(
     new PostgresSecurityRepository(postgresPool),
   );
 
-  const pricingFxService = new PricingFxService(
-    new PostgresPricingFxRepository(postgresPool),
-  );
+  const pricingFxRepository = new PostgresPricingFxRepository(postgresPool);
+  const pricingFxService = new PricingFxService(pricingFxRepository);
+
+  const tradeRepository = new PostgresTradeRepository(postgresPool);
 
   const tradeRegistryService = new TradeRegistryService(
-    new PostgresTradeRepository(postgresPool),
+    tradeRepository,
     new PostgresIdempotencyStore(postgresPool),
     env.IDEMPOTENCY_TTL_HOURS,
   );
 
   const valuationService = new ValuationService(
-    new InMemoryPositionSource(),
-    new InMemoryPriceSource(),
-    new InMemoryValuationSnapshotRepository(),
+    new PortfolioBaseCurrencySource(portfolioRepository),
+    new TradeLedgerPositionSource(tradeRepository),
+    new PricingFxMarketDataSource(pricingFxRepository),
+    new PostgresValuationSnapshotRepository(postgresPool),
   );
 
   const performanceService = new PerformanceService(

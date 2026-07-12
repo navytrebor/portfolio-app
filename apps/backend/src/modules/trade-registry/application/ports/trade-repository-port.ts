@@ -5,4 +5,5 @@ export interface TradeRepositoryPort {
   findById(id: string): Promise<TradeRecord | null>;
   list(): Promise<TradeRecord[]>;
   listByPortfolioIds(portfolioIds: string[]): Promise<TradeRecord[]>;
+  listForPortfolioAsOf(portfolioId: string, asOf: string): Promise<TradeRecord[]>;
 }

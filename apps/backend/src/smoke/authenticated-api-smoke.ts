@@ -6,6 +6,7 @@ import { env } from "../config/env";
 type SeedContext = {
   userId: string;
   portfolioId: string;
+  portfolioBaseCurrency: string;
   securityId: string;
   asOf: string;
 };
@@ -24,8 +25,8 @@ async function getSeedContext(pool: Pool): Promise<SeedContext> {
 
   const userId = userResult.rows[0].id;
 
-  const portfolioResult = await pool.query<{ id: string }>(
-    `SELECT id FROM portfolios WHERE user_id = $1 ORDER BY created_at ASC LIMIT 1`,
+  const portfolioResult = await pool.query<{ id: string; base_currency: string }>(
+    `SELECT id, base_currency FROM portfolios WHERE user_id = $1 ORDER BY created_at ASC LIMIT 1`,
     [userId],
   );
   assert.ok(portfolioResult.rows[0], "No portfolios found for seeded user.");
@@ -35,11 +36,19 @@ async function getSeedContext(pool: Pool): Promise<SeedContext> {
   );
   assert.ok(securityResult.rows[0], "No securities found. Run db:seed first.");
 
+  const latestPriceDateResult = await pool.query<{ latest_price_date: string | null }>(
+    `SELECT MAX(price_date)::text AS latest_price_date FROM security_prices`,
+  );
+  const latestPriceDate = latestPriceDateResult.rows[0]?.latest_price_date;
+  assert.ok(latestPriceDate, "No security prices found. Run db:seed first.");
+
+  const asOfDate = latestPriceDate;
   return {
     userId,
     portfolioId: portfolioResult.rows[0].id,
+    portfolioBaseCurrency: portfolioResult.rows[0].base_currency,
     securityId: securityResult.rows[0].id,
-    asOf: new Date().toISOString(),
+    asOf: `${asOfDate}T17:00:00.000Z`,
   };
 }
 
@@ -139,6 +148,33 @@ async function run() {
       }),
     });
     assert.equal(valuationRun.status, 201, "Expected valuation run to return 201");
+    assert.equal(
+      typeof valuationRun.body === "object" && valuationRun.body !== null,
+      true,
+      "Expected valuation response body",
+    );
+
+    const valuationBody = valuationRun.body as {
+      totalValue?: unknown;
+      currency?: unknown;
+      securitiesValue?: unknown;
+    };
+
+    assert.equal(
+      typeof valuationBody.totalValue === "number" && valuationBody.totalValue > 0,
+      true,
+      "Expected valuation totalValue > 0",
+    );
+    assert.equal(
+      typeof valuationBody.securitiesValue === "number" && valuationBody.securitiesValue > 0,
+      true,
+      "Expected valuation securitiesValue > 0",
+    );
+    assert.equal(
+      valuationBody.currency,
+      context.portfolioBaseCurrency,
+      "Expected valuation currency to match portfolio base currency",
+    );
 
     const performanceRun = await callApi("/api/analytics/performance/run", {
       method: "POST",

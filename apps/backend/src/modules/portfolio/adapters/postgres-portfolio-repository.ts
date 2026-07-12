@@ -21,6 +21,23 @@ function rowToPortfolio(row: PortfolioRow): Portfolio {
 export class PostgresPortfolioRepository implements PortfolioRepository {
   constructor(private readonly pool: Pool) {}
 
+  async findById(id: string): Promise<Portfolio | null> {
+    const result = await this.pool.query<PortfolioRow>(
+      `
+      SELECT id, user_id, name, base_currency
+      FROM portfolios
+      WHERE id = $1
+      `,
+      [id],
+    );
+
+    if ((result.rowCount ?? 0) === 0) {
+      return null;
+    }
+
+    return rowToPortfolio(result.rows[0]);
+  }
+
   async listByUserId(userId: string): Promise<Portfolio[]> {
     const result = await this.pool.query<PortfolioRow>(
       `

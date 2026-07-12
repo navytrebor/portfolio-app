@@ -122,4 +122,19 @@ export class PostgresTradeRepository implements TradeRepositoryPort {
 
     return result.rows.map(rowToTrade);
   }
+
+  async listForPortfolioAsOf(portfolioId: string, asOf: string): Promise<TradeRecord[]> {
+    const result = await this.pool.query<TradeRow>(
+      `
+      SELECT id, portfolio_id, security_id, side, quantity, price, trade_date, currency, created_at
+      FROM trades
+      WHERE portfolio_id = $1
+        AND trade_date <= $2::timestamptz
+      ORDER BY trade_date ASC, created_at ASC, id ASC
+      `,
+      [portfolioId, asOf],
+    );
+
+    return result.rows.map(rowToTrade);
+  }
 }
