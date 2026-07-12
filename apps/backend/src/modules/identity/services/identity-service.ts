@@ -71,7 +71,7 @@ export class IdentityService {
   async startLogin(email: string): Promise<LoginInitiationResult> {
     const user = await this.getUserByEmail(email);
     if (!user) {
-      throw authenticationRequired("Unknown email address");
+      throw authenticationRequired();
     }
 
     const expiresAt = new Date(Date.now() + CHALLENGE_TTL_MS).toISOString();
