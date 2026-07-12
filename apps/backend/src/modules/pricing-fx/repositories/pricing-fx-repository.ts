@@ -8,6 +8,7 @@ import type {
 } from "../domain/market-data";
 
 export interface PricingFxRepository {
+  getLatestMarketDataAsOfDate(): Promise<string | null>;
   getSecurityPrice(securityId: string, asOf: string): Promise<SecurityPrice | null>;
   getFxRate(fromCurrency: string, toCurrency: string, asOf: string): Promise<FxRate | null>;
   upsertSecurityPricesWithStaleGuard(

@@ -12,6 +12,30 @@ export class InMemoryPricingFxRepository implements PricingFxRepository {
   private readonly prices = new Map<string, SecurityPrice>();
   private readonly fxRates = new Map<string, FxRate>();
 
+  async getLatestMarketDataAsOfDate(): Promise<string | null> {
+    const latestPrice = Array.from(this.prices.values())
+      .map((price) => price.asOf)
+      .sort((left, right) => right.localeCompare(left))[0];
+
+    const latestFx = Array.from(this.fxRates.values())
+      .map((rate) => rate.asOf)
+      .sort((left, right) => right.localeCompare(left))[0];
+
+    if (!latestPrice && !latestFx) {
+      return null;
+    }
+
+    if (!latestPrice) {
+      return latestFx ?? null;
+    }
+
+    if (!latestFx) {
+      return latestPrice;
+    }
+
+    return latestPrice > latestFx ? latestPrice : latestFx;
+  }
+
   async getSecurityPrice(securityId: string, asOf: string): Promise<SecurityPrice | null> {
     return this.prices.get(`${securityId}:${asOf}`) ?? null;
   }

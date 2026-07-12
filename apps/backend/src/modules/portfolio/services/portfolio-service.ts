@@ -4,6 +4,10 @@ import type { PortfolioRepository } from "../repositories/portfolio-repository";
 export class PortfolioService {
   constructor(private readonly portfolios: PortfolioRepository) {}
 
+  async listAllPortfolios(): Promise<Portfolio[]> {
+    return this.portfolios.listAll();
+  }
+
   async getPortfolio(id: string): Promise<Portfolio | null> {
     return this.portfolios.findById(id);
   }

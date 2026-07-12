@@ -26,6 +26,20 @@ type FxRateRow = {
 export class PostgresPricingFxRepository implements PricingFxRepository {
   constructor(private readonly pool: Pool) {}
 
+  async getLatestMarketDataAsOfDate(): Promise<string | null> {
+    const result = await this.pool.query<{ latest_date: string | null }>(
+      `
+      SELECT GREATEST(
+        COALESCE((SELECT MAX(price_date)::text FROM security_prices), ''),
+        COALESCE((SELECT MAX(price_date)::text FROM fx_rates), '')
+      ) AS latest_date
+      `,
+    );
+
+    const latestDate = result.rows[0]?.latest_date ?? null;
+    return latestDate && latestDate.length > 0 ? latestDate : null;
+  }
+
   async getSecurityPrice(securityId: string, asOf: string): Promise<SecurityPrice | null> {
     const asOfDate = asOf.slice(0, 10);
     const result = await this.pool.query<SecurityPriceRow>(
