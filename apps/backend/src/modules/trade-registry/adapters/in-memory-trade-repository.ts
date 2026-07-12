@@ -26,4 +26,23 @@ export class InMemoryTradeRepository implements TradeRepositoryPort {
     const allowed = new Set(portfolioIds);
     return this.items.filter((item) => allowed.has(item.portfolioId));
   }
+
+  async listForPortfolioAsOf(portfolioId: string, asOf: string): Promise<TradeRecord[]> {
+    return this.items
+      .filter((item) => item.portfolioId === portfolioId)
+      .filter((item) => item.tradeDate <= asOf)
+      .sort((left, right) => {
+        const byTradeDate = left.tradeDate.localeCompare(right.tradeDate);
+        if (byTradeDate !== 0) {
+          return byTradeDate;
+        }
+
+        const byCreatedAt = left.createdAt.localeCompare(right.createdAt);
+        if (byCreatedAt !== 0) {
+          return byCreatedAt;
+        }
+
+        return left.id.localeCompare(right.id);
+      });
+  }
 }
