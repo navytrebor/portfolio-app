@@ -88,12 +88,15 @@ export function verifyTotpCode(secret: string, candidate: string, now = Date.now
     return false;
   }
 
-  const currentCounter = Math.floor(now / 1000 / TOTP_PERIOD_SECONDS);
-  for (const offset of [-1, 0, 1]) {
-    if (hotp(secret, currentCounter + offset) === trimmed) {
-      return true;
+  try {
+    const currentCounter = Math.floor(now / 1000 / TOTP_PERIOD_SECONDS);
+    for (const offset of [-1, 0, 1]) {
+      if (hotp(secret, currentCounter + offset) === trimmed) {
+        return true;
+      }
     }
+    return false;
+  } catch {
+    return false;
   }
-
-  return false;
 }
