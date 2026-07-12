@@ -1,13 +1,14 @@
 CREATE TEMP TABLE desired_users (
   id UUID PRIMARY KEY,
-  email TEXT NOT NULL UNIQUE
+  email TEXT NOT NULL UNIQUE,
+  role TEXT NOT NULL
 ) ON COMMIT DROP;
 
-INSERT INTO desired_users (id, email)
+INSERT INTO desired_users (id, email, role)
 VALUES
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'alice@example.com'),
-  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'bob@example.com'),
-  ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'carol@example.com');
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'alice@example.com', 'ADMIN'),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'bob@example.com', 'ANALYST'),
+  ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'carol@example.com', 'TRADER');
 
 UPDATE users AS existing
 SET email = 'seed-legacy-' || existing.id::text || '@example.invalid'
@@ -15,11 +16,12 @@ FROM desired_users AS desired
 WHERE existing.email = desired.email
   AND existing.id <> desired.id;
 
-INSERT INTO users (id, email)
-SELECT id, email
+INSERT INTO users (id, email, role)
+SELECT id, email, role
 FROM desired_users
 ON CONFLICT (id) DO UPDATE
-SET email = EXCLUDED.email;
+SET email = EXCLUDED.email,
+    role = EXCLUDED.role;
 
 CREATE TEMP TABLE desired_portfolios (
   id UUID PRIMARY KEY,

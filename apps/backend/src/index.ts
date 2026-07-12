@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import { env } from "./config/env";
 import { buildContainer } from "./bootstrap/container";
 import { registerApiErrorHandler } from "./http/api-errors";
+import { registerAuthRoutes } from "./modules/identity/routes/auth-routes";
 import { registerPortfolioRoutes } from "./modules/portfolio/routes/portfolio-routes";
 import { registerSecurityRoutes } from "./modules/security-master/routes/security-routes";
 import { registerTradeRoutes } from "./modules/trade-registry/routes/trade-routes";
@@ -43,6 +44,7 @@ await app.register(cors, {
   origin: true,
 });
 
+await registerAuthRoutes(app, container.identityService);
 await registerPortfolioRoutes(app, container.portfolioService, container.identityService);
 await registerSecurityRoutes(app, container.securityMasterService, container.identityService);
 await registerTradeRoutes(

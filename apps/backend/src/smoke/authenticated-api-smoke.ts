@@ -5,8 +5,11 @@ import { env } from "../config/env";
 import { API_V1_PREFIX } from "../http/api-versioning";
 
 type SeedContext = {
-  userId: string;
-  portfolioId: string;
+  adminUserId: string;
+  analystUserId: string;
+  traderUserId: string;
+  adminPortfolioId: string;
+  analystPortfolioId: string;
   portfolioBaseCurrency: string;
   securityId: string;
   asOf: string;
@@ -19,18 +22,32 @@ function apiBaseUrl(): string {
 }
 
 async function getSeedContext(pool: Pool): Promise<SeedContext> {
-  const userResult = await pool.query<{ id: string }>(
-    `SELECT id FROM users ORDER BY created_at ASC LIMIT 1`,
+  const userResult = await pool.query<{ id: string; email: string; role: UserRole }>(
+    `SELECT id, email, role FROM users WHERE email = ANY($1::text[]) ORDER BY created_at ASC`,
+    [["alice@example.com", "bob@example.com", "carol@example.com"]],
   );
-  assert.ok(userResult.rows[0], "No users found. Run db:seed first.");
+  assert.equal(userResult.rows.length >= 3, true, "Expected seeded users for alice, bob, and carol.");
 
-  const userId = userResult.rows[0].id;
+  const byEmail = new Map(userResult.rows.map((row) => [row.email, row]));
+  const adminUser = byEmail.get("alice@example.com");
+  const analystUser = byEmail.get("bob@example.com");
+  const traderUser = byEmail.get("carol@example.com");
 
-  const portfolioResult = await pool.query<{ id: string; base_currency: string }>(
+  assert.ok(adminUser, "Expected seeded admin user.");
+  assert.ok(analystUser, "Expected seeded analyst user.");
+  assert.ok(traderUser, "Expected seeded trader user.");
+
+  const adminPortfolioResult = await pool.query<{ id: string; base_currency: string }>(
     `SELECT id, base_currency FROM portfolios WHERE user_id = $1 ORDER BY created_at ASC LIMIT 1`,
-    [userId],
+    [adminUser.id],
   );
-  assert.ok(portfolioResult.rows[0], "No portfolios found for seeded user.");
+  assert.ok(adminPortfolioResult.rows[0], "No portfolio found for seeded admin user.");
+
+  const analystPortfolioResult = await pool.query<{ id: string; base_currency: string }>(
+    `SELECT id, base_currency FROM portfolios WHERE user_id = $1 ORDER BY created_at ASC LIMIT 1`,
+    [analystUser.id],
+  );
+  assert.ok(analystPortfolioResult.rows[0], "No portfolio found for seeded analyst user.");
 
   const securityResult = await pool.query<{ id: string }>(
     `SELECT id FROM securities ORDER BY created_at ASC LIMIT 1`,
@@ -45,9 +62,12 @@ async function getSeedContext(pool: Pool): Promise<SeedContext> {
 
   const asOfDate = latestPriceDate;
   return {
-    userId,
-    portfolioId: portfolioResult.rows[0].id,
-    portfolioBaseCurrency: portfolioResult.rows[0].base_currency,
+    adminUserId: adminUser.id,
+    analystUserId: analystUser.id,
+    traderUserId: traderUser.id,
+    adminPortfolioId: adminPortfolioResult.rows[0].id,
+    analystPortfolioId: analystPortfolioResult.rows[0].id,
+    portfolioBaseCurrency: adminPortfolioResult.rows[0].base_currency,
     securityId: securityResult.rows[0].id,
     asOf: `${asOfDate}T17:00:00.000Z`,
   };
@@ -118,7 +138,7 @@ async function run() {
 
     const portfolios = await callApi(`${API_V1_PREFIX}/portfolios`, {
       method: "GET",
-      headers: authHeaders(context.userId, "VIEWER"),
+      headers: authHeaders(context.traderUserId, "TRADER"),
     });
     assert.equal(portfolios.status, 200, "Expected portfolios endpoint to return 200");
 
@@ -131,7 +151,7 @@ async function run() {
 
     const securities = await callApi(`${API_V1_PREFIX}/securities?limit=2&offset=0&ticker=AAPL`, {
       method: "GET",
-      headers: authHeaders(context.userId, "VIEWER"),
+      headers: authHeaders(context.traderUserId, "TRADER"),
     });
     assert.equal(securities.status, 200, "Expected securities collection endpoint to return 200");
 
@@ -148,15 +168,15 @@ async function run() {
 
     const security = await callApi(`${API_V1_PREFIX}/securities/${context.securityId}`, {
       method: "GET",
-      headers: authHeaders(context.userId, "VIEWER"),
+      headers: authHeaders(context.traderUserId, "TRADER"),
     });
     assert.equal(security.status, 200, "Expected securities endpoint to return 200");
 
     const trades = await callApi(
-      `${API_V1_PREFIX}/trades?limit=10&offset=0&portfolioId=${context.portfolioId}`,
+      `${API_V1_PREFIX}/trades?limit=10&offset=0&portfolioId=${context.adminPortfolioId}`,
       {
       method: "GET",
-      headers: authHeaders(context.userId, "ANALYST"),
+      headers: authHeaders(context.adminUserId, "ADMIN"),
       },
     );
     assert.equal(trades.status, 200, "Expected trades endpoint to return 200");
@@ -167,16 +187,16 @@ async function run() {
     };
     assert.equal(Array.isArray(tradesBody.items), true, "Expected paginated trade items");
     assert.equal(
-      tradesBody.items?.every((item) => item.portfolioId === context.portfolioId) ?? false,
+      tradesBody.items?.every((item) => item.portfolioId === context.adminPortfolioId) ?? false,
       true,
       "Expected trades filter to restrict by portfolioId",
     );
 
     const valuationRun = await callApi(`${API_V1_PREFIX}/valuations/run`, {
       method: "POST",
-      headers: authHeaders(context.userId, "ANALYST"),
+      headers: authHeaders(context.adminUserId, "ADMIN"),
       body: JSON.stringify({
-        portfolioId: context.portfolioId,
+        portfolioId: context.adminPortfolioId,
         asOf: context.asOf,
       }),
     });
@@ -211,9 +231,9 @@ async function run() {
 
     const performanceRun = await callApi(`${API_V1_PREFIX}/analytics/performance/run`, {
       method: "POST",
-      headers: authHeaders(context.userId, "ANALYST"),
+      headers: authHeaders(context.adminUserId, "ADMIN"),
       body: JSON.stringify({
-        portfolioId: context.portfolioId,
+        portfolioId: context.adminPortfolioId,
         asOf: context.asOf,
       }),
     });
@@ -262,9 +282,9 @@ async function run() {
 
     const forbiddenTradeWrite = await callApi(`${API_V1_PREFIX}/trades`, {
       method: "POST",
-      headers: authHeaders(context.userId, "VIEWER"),
+      headers: authHeaders(context.analystUserId, "ANALYST"),
       body: JSON.stringify({
-        portfolioId: context.portfolioId,
+        portfolioId: context.analystPortfolioId,
         securityId: context.securityId,
         side: "BUY",
         quantity: 1,
