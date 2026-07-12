@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { env } from "../config/env";
 import type { IdentityService } from "../modules/identity/services/identity-service";
+import { authenticationRequired, forbidden, sendApiError } from "../http/api-errors";
 
 export type UserRole = "ADMIN" | "TRADER" | "ANALYST" | "VIEWER";
 
@@ -83,26 +84,33 @@ export async function requireRole(
   const context = bearerToken ? parseAuthToken(bearerToken) : null;
 
   if (!context) {
-    reply.status(401).send({
-      message: "Authentication required. Provide a valid Bearer token.",
-    });
+    sendApiError(
+      reply,
+      request.id,
+      authenticationRequired("Authentication required. Provide a valid Bearer token."),
+    );
     return null;
   }
 
   const user = await identityService.getUser(context.userId);
   if (!user) {
-    reply.status(401).send({
-      message: "Authentication required. Provide a valid Bearer token.",
-    });
+    sendApiError(
+      reply,
+      request.id,
+      authenticationRequired("Authentication required. Provide a valid Bearer token."),
+    );
     return null;
   }
 
   if (!allowedRoles.includes(context.role)) {
-    reply.status(403).send({
-      message: "Insufficient role for this endpoint",
-      requiredRoles: allowedRoles,
-      currentRole: context.role,
-    });
+    sendApiError(
+      reply,
+      request.id,
+      forbidden("Insufficient role for this endpoint", {
+        requiredRoles: allowedRoles,
+        currentRole: context.role,
+      }),
+    );
     return null;
   }
 
