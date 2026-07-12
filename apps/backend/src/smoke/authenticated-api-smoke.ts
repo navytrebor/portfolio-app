@@ -185,6 +185,47 @@ async function run() {
       }),
     });
     assert.equal(performanceRun.status, 201, "Expected analytics run to return 201");
+    assert.equal(
+      typeof performanceRun.body === "object" && performanceRun.body !== null,
+      true,
+      "Expected analytics response body",
+    );
+
+    const analyticsBody = performanceRun.body as {
+      twr?: unknown;
+      mwr?: unknown;
+      drawdown?: unknown;
+      rollingVolatility?: unknown;
+      benchmarkSpread?: unknown;
+      concentrationHhi?: unknown;
+      topPositionWeight?: unknown;
+    };
+
+    assert.equal(typeof analyticsBody.twr === "number", true, "Expected twr metric");
+    assert.equal(typeof analyticsBody.mwr === "number", true, "Expected mwr metric");
+    assert.equal(typeof analyticsBody.drawdown === "number", true, "Expected drawdown metric");
+    assert.equal(
+      analyticsBody.rollingVolatility === null ||
+        typeof analyticsBody.rollingVolatility === "number",
+      true,
+      "Expected rolling volatility metric",
+    );
+    assert.equal(
+      analyticsBody.benchmarkSpread === null || typeof analyticsBody.benchmarkSpread === "number",
+      true,
+      "Expected benchmark spread metric",
+    );
+    assert.equal(
+      analyticsBody.concentrationHhi === null || typeof analyticsBody.concentrationHhi === "number",
+      true,
+      "Expected concentration HHI metric",
+    );
+    assert.equal(
+      analyticsBody.topPositionWeight === null ||
+        typeof analyticsBody.topPositionWeight === "number",
+      true,
+      "Expected top position weight metric",
+    );
 
     const forbiddenTradeWrite = await callApi("/api/trades", {
       method: "POST",

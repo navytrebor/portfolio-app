@@ -17,9 +17,11 @@ import {
 } from "../modules/valuation/adapters/postgres-valuation-adapters";
 import { ValuationService } from "../modules/valuation/application/services/valuation-service";
 import {
-  InMemoryPerformanceMetricsRepository,
-  InMemoryValuationHistory,
-} from "../modules/performance/adapters/in-memory-performance-adapters";
+  PostgresBenchmarkComparison,
+  PostgresConcentrationRisk,
+  PostgresPerformanceMetricsRepository,
+  PostgresValuationHistory,
+} from "../modules/performance/adapters/postgres-performance-adapters";
 import { PerformanceService } from "../modules/performance/application/services/performance-service";
 import { postgresPool } from "../db/postgres-pool";
 import { env } from "../config/env";
@@ -61,8 +63,10 @@ export function buildContainer(): AppContainer {
   );
 
   const performanceService = new PerformanceService(
-    new InMemoryValuationHistory(),
-    new InMemoryPerformanceMetricsRepository(),
+    new PostgresValuationHistory(postgresPool),
+    new PostgresBenchmarkComparison(postgresPool),
+    new PostgresConcentrationRisk(postgresPool),
+    new PostgresPerformanceMetricsRepository(postgresPool),
   );
 
   return {
