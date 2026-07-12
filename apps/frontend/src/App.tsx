@@ -540,22 +540,31 @@ export function App() {
     setIsAuthSubmitting(true);
     setAuthError(null);
     try {
-      const session =
-        authStep.kind === "enroll"
-          ? await apiRequest<AuthSessionResponse>("/api/v1/auth/mfa/enroll", {
-              method: "POST",
-              body: JSON.stringify({
-                enrollmentToken: authStep.payload.enrollmentToken,
-                code,
-              }),
-            })
-          : await apiRequest<AuthSessionResponse>("/api/v1/auth/login/verify", {
-              method: "POST",
-              body: JSON.stringify({
-                challengeToken: authStep.payload.challengeToken,
-                code,
-              }),
-            });
+      const session = await (async () => {
+        if (authStep.kind === "enroll") {
+          if (!authStep.payload.enrollmentToken) {
+            throw new Error("Missing MFA enrollment token. Restart login.");
+          }
+          return apiRequest<AuthSessionResponse>("/api/v1/auth/mfa/enroll", {
+            method: "POST",
+            body: JSON.stringify({
+              enrollmentToken: authStep.payload.enrollmentToken,
+              code,
+            }),
+          });
+        }
+
+        if (!authStep.payload.challengeToken) {
+          throw new Error("Missing MFA challenge token. Restart login.");
+        }
+        return apiRequest<AuthSessionResponse>("/api/v1/auth/login/verify", {
+          method: "POST",
+          body: JSON.stringify({
+            challengeToken: authStep.payload.challengeToken,
+            code,
+          }),
+        });
+      })();
 
       await finalizeSession(session);
     } catch (error) {
