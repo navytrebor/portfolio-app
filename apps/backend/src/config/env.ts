@@ -32,11 +32,11 @@ const envSchema = z.object({
   BACKGROUND_WORKFLOWS_ENABLED: z
     .string()
     .transform((v) => v === "true" || v === "1")
-    .default("true"),
+    .default("false"),
   BACKGROUND_WORKFLOWS_RUN_ON_START: z
     .string()
     .transform((v) => v === "true" || v === "1")
-    .default("true"),
+    .default("false"),
   PRICING_SYNC_INTERVAL_SECONDS: z.coerce.number().int().positive().default(300),
   VALUATION_EOD_INTERVAL_SECONDS: z.coerce.number().int().positive().default(900),
   ANALYTICS_REFRESH_INTERVAL_SECONDS: z.coerce.number().int().positive().default(1200),
