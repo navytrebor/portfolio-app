@@ -51,10 +51,9 @@ async function run() {
   const valuationCount = Number(valuationCountResult.rows[0]?.count ?? 0);
   const performanceCount = Number(performanceCountResult.rows[0]?.count ?? 0);
 
-  assert.equal(valuationCount > 0, true, "Expected EOD valuation snapshots to be persisted");
-  assert.equal(
+  assert.ok(valuationCount > 0, "Expected EOD valuation snapshots to be persisted");
+  assert.ok(
     performanceCount > 0,
-    true,
     "Expected analytics cache refresh snapshots to be persisted",
   );
 
