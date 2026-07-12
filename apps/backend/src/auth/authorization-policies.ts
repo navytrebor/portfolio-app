@@ -7,4 +7,4 @@ export const rolePolicies = {
   tradesWrite: ["ADMIN", "TRADER"],
   valuationsRun: ["ADMIN", "ANALYST"],
   analyticsRun: ["ADMIN", "ANALYST"],
-} as const satisfies Record<string, UserRole[]>;
+} satisfies Record<string, UserRole[]>;
